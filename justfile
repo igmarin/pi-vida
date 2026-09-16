@@ -695,7 +695,30 @@ smoke:
       }
       console.log("agent-chain default chain ok");
     '
-    bun test "{{root}}/extensions/agentScan.test.ts" "{{root}}/extensions/capabilities.test.ts" "{{root}}/extensions/boot-config.test.ts" "{{root}}/extensions/clarify-gate.test.ts" "{{root}}/extensions/agent-chain.test.ts" "{{root}}/extensions/agent-team.test.ts" "{{root}}/extensions/subagent.test.ts" "{{root}}/extensions/installed-skills.test.ts" "{{root}}/extensions/fusion-harness/tests" "{{root}}/scripts/skills-bootstrap.test.ts"
+    # Issue #81: pi-vida agents <vida> — the resolved view from a temp cwd.
+    agents_cwd="$(mktemp -d)"
+    agents_out="$(cd "${agents_cwd}" && MY_PI_AGENT_HOME="{{root}}" PI_SKILLS_HOME="${tmp}" "${bin}" agents ruby 2>"${tmp}/agents.err")"
+    grep -q '^vida: ruby$' <<<"${agents_out}"
+    grep -q 'profiles/agents/planner.yaml' <<<"${agents_out}"
+    grep -q '^agent-order: ' <<<"${agents_out}"
+    grep -q '^chain-order: ' <<<"${agents_out}"
+    grep -q -- "^skill: ${tmp}/i-have-adhd$" <<<"${agents_out}"
+    grep -q '^team: default (default)$' <<<"${agents_out}"
+    # First-wins winner comes from the harness; the project builder is listed
+    # as shadowed (the issue example had this backwards; discover() order is
+    # profiles/<vida>/agents -> profiles/agents -> .pi/agents, unchanged).
+    mkdir -p "${agents_cwd}/.pi/agents"
+    printf '%s\n' 'name: builder' 'description: project builder' 'body: |' '  PROJECT' >"${agents_cwd}/.pi/agents/builder.yaml"
+    agents_shadow_out="$(cd "${agents_cwd}" && MY_PI_AGENT_HOME="{{root}}" PI_SKILLS_HOME="${tmp}" "${bin}" agents ruby 2>/dev/null)"
+    grep -q 'profiles/agents/builder.yaml' <<<"${agents_shadow_out}"
+    grep -q -- "  shadows: ${agents_cwd}/.pi/agents/builder.yaml" <<<"${agents_shadow_out}"
+    # Unknown vida exits 2 with the same message launch prints.
+    status=0
+    agents_bad="$(cd "${agents_cwd}" && MY_PI_AGENT_HOME="{{root}}" PI_SKILLS_HOME="${tmp}" "${bin}" agents nosuch 2>&1)" || status=$?
+    test "${status}" -eq 2
+    grep -q 'unknown vida nosuch' <<<"${agents_bad}"
+    rm -rf "${agents_cwd}"
+    bun test "{{root}}/extensions/agentScan.test.ts" "{{root}}/extensions/capabilities.test.ts" "{{root}}/extensions/boot-config.test.ts" "{{root}}/extensions/clarify-gate.test.ts" "{{root}}/extensions/agent-chain.test.ts" "{{root}}/extensions/agent-team.test.ts" "{{root}}/extensions/subagent.test.ts" "{{root}}/extensions/agents-view.test.ts" "{{root}}/extensions/installed-skills.test.ts" "{{root}}/extensions/fusion-harness/tests" "{{root}}/scripts/skills-bootstrap.test.ts"
     bun build "{{root}}/extensions/themeMap.ts" "{{root}}/extensions/minimal.ts" "{{root}}/extensions/purpose-gate.ts" \
       "{{root}}/extensions/cross-agent.ts" "{{root}}/extensions/system-select.ts" \
       "{{root}}/extensions/damage-control-continue.ts" \
@@ -704,6 +727,7 @@ smoke:
       "{{root}}/extensions/clarify-gate.ts" \
       "{{root}}/extensions/agent-chain.ts" \
       "{{root}}/extensions/agent-team.ts" \
+      "{{root}}/extensions/agents-view.ts" \
       "{{root}}/extensions/status-line.ts" \
       "{{root}}/extensions/subagent.ts" "{{root}}/extensions/subagentHelpers.ts" \
       "{{root}}/extensions/installed-skills.ts" \

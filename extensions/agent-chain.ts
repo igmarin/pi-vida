@@ -288,6 +288,25 @@ function harnessChainPath(
 }
 
 /**
+ * Chain-file candidates in precedence order — the single source of truth the
+ * formatter path (agents-view) and resolveChainFile consume (issue #81).
+ * Prefixless entries are candidates; the formatter prefixes ones on disk `*`.
+ */
+export function chainCandidates(
+	cwd: string,
+	extFileUrl: string,
+	life: string | undefined,
+): { source: string; path: string }[] {
+	return [
+		{
+			source: ".pi/agents",
+			path: join(cwd, ".pi", "agents", "agent-chain.yaml"),
+		},
+		...harnessChainPath(extFileUrl, life || null),
+	];
+}
+
+/**
  * Resolve the chain file for the cwd. Project `.pi/agents` wins over the
  * harness so a repo can override the default; a repo without the file still
  * gets the harness default (no pollution requirement, issue #6).
@@ -297,14 +316,7 @@ export function resolveChainFile(
 	extFileUrl: string,
 	life: string | undefined,
 ): { source: string; path: string } | null {
-	const candidates: { source: string; path: string }[] = [
-		{
-			source: ".pi/agents",
-			path: join(cwd, ".pi", "agents", "agent-chain.yaml"),
-		},
-		...harnessChainPath(extFileUrl, life || null),
-	];
-	for (const p of candidates) {
+	for (const p of chainCandidates(cwd, extFileUrl, life)) {
 		if (existsSync(p.path)) return p;
 	}
 	return null;

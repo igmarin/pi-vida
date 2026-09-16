@@ -62,6 +62,15 @@ Aliases: `rails` → `ruby`, `phoenix` → `elixir`. `ecto` and `rails-python` a
 
 Mode exclusivity is structural: solo loads the status line, chain loads the chain extension, team loads the dispatcher, fusion loads the vendored multi-model extension — never more than one of them.
 
+### Inspect what will run
+
+```sh
+pi-vida agents ruby            # resolved view for cwd + vida
+pi-vida agents nope            # unknown vida → exit 2
+```
+
+Prints, per cwd: winner and shadowed personas (`agent:` / `shadows:`), the active team and members (`team:`, `members:`; `PI_TEAM` is marked), the chain file that won, **both** discovery orders with `*` marking candidates that exist on disk, and the `--skill` paths launch would pass (same resolver as launch — missing mantra/tracker exit 2, missing packs warn). The bun-side resolver is `resolvedAgentsView` in `extensions/agents-view.ts` (the in-session `/agents` command builds on it).
+
 ## Model fusion
 
 ```sh
