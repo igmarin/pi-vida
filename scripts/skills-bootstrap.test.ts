@@ -175,3 +175,16 @@ skills:
 		expect(sourcesToSync(SHARED, [])).toEqual([]);
 	});
 });
+
+describe("allowlist manifest merge (smoke n-equivalent)", () => {
+	test("a scoped plan keeps other vidas' manifest entries when merged", () => {
+		// The launcher's install path: existing manifest entries (other
+		// vidas' packs) merge over plan.manifest, so a --allowlist run must
+		// not drop them. Pins the merge order main() relies on.
+		const existing = { "elixir-phoenix-skills:mix-format": { path: "mix-format" } };
+		const plan = planInstall(parsePacksConfig(VALID), () => ["alpha"], ["ruby-core-skills"]);
+		const merged = { ...existing, ...plan.manifest };
+		expect(merged["elixir-phoenix-skills:mix-format"]).toEqual({ path: "mix-format" });
+		expect(merged["ruby-core-skills:alpha"]).toEqual({ path: "alpha" });
+	});
+});
