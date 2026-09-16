@@ -62,8 +62,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { parse as yamlParse } from "yaml";
 import { type AgentDef, collectAgents, harnessRoot } from "./agentScan.ts";

@@ -1,16 +1,16 @@
 /**
- * Resolved agents view (issue #81): what `pi-vida agents <vida>` prints for a
- * cwd — winner + shadowed personas, active team, chain file, both discovery
- * orders, and the skills launch would pass. The in-session `/agents` command
- * (#77) reuses `resolvedAgentsView`; the launcher CLI (`bin/pi-vida agents`)
- * reuses the same launch-arg resolver, so "same resolver as launch" holds by
- * construction.
+ * Resolved agents view (issue #81): winner + shadowed personas, active team,
+ * chain file, and both discovery orders for a cwd + vida. The in-session
+ * `/agents` command (#77) reuses `resolvedAgentsView`; the launcher CLI
+ * (`bin/pi-vida agents`) reuses the same launch-arg resolver, so "same
+ * resolver as launch" holds by construction (it also prints the resolved
+ * `--skill` paths from that shared path).
  */
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { type AgentDef, agentSources, canonicalLife, discover, harnessRoot } from "./agentScan.ts";
-import { chainCandidates, parseAgentTeams, pickTeam } from "./agent-chain.ts";
+import { chainCandidates, ChainError, parseAgentTeams, pickTeam } from "./agent-chain.ts";
 import { overlayFromEnv } from "./capabilities.ts";
 
 export interface ResolvedAgentsView {
@@ -68,9 +68,6 @@ export function resolvedAgentsView(
 	const chainFile = candidates.find((c) => existsSync(c.path));
 	if (chainFile) {
 		view.chainFile = { source: chainFile.source, path: chainFile.path };
-		// Malformed chain YAML or an unknown PI_TEAM must not crash the
-		// inspector (launch fails closed on it; the view degrades to
-		// team: none and still shows agents/orders).
 		try {
 			const teams = parseAgentTeams(readFileSync(chainFile.path, "utf-8"));
 			const wanted = process.env.PI_TEAM?.trim() || undefined;
@@ -78,7 +75,11 @@ export function resolvedAgentsView(
 			const team = pickTeam(teams, wanted);
 			const via = wanted && team.name === wanted ? "PI_TEAM" : "default";
 			view.team = { name: team.name, members: [...team.members], via };
-		} catch {
+		} catch (e) {
+			// ChainError covers the documented degrade paths: malformed chain
+			// YAML (parse) and an unknown PI_TEAM (pickTeam). Anything else is
+			// a real bug — rethrow, never mask it as team: none.
+			if (!(e instanceof ChainError)) throw e;
 			view.team = null;
 		}
 	}
@@ -130,5 +131,10 @@ if (import.meta.main) {
 		console.error("usage: bun extensions/agents-view.ts <cwd> [vida]");
 		process.exit(2);
 	}
-	console.log(formatAgentsView(resolvedAgentsView(cwd, vida || process.env.PI_VIDA || process.env.PI_LIFE)));
+	const v = resolvedAgentsView(cwd, vida || process.env.PI_VIDA || process.env.PI_LIFE);
+	if (vida && !v.vida) {
+		console.error(`agents-view: unknown vida ${vida}`);
+		process.exit(2);
+	}
+	console.log(formatAgentsView(v));
 }
