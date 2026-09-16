@@ -27,8 +27,9 @@ export type SourceGroup = {
 	commands: Discovered[];
 	skills: Discovered[];
 	agents: AgentDef[];
-	/** Agents dropped by first-wins because a winner in this group already
-	 * claimed the name (issue #81: the inspector lists them as shadows). */
+	/** Agents dropped by first-wins because a winner earlier in the shared
+	 * discovery order (this or a preceding group) already claimed the name
+	 * (issue #81: the inspector lists them as shadows). */
 	shadowed: AgentDef[];
 };
 

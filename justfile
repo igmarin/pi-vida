@@ -743,6 +743,14 @@ smoke:
     grep -q -- '  model: openrouter/profile-builder' <<<"${agents_merge_out}"
     ! grep -q 'openrouter/profile-planner' <<<"${agents_merge_out}"
     rm -rf "${agents_prof}"
+    # Fail-closed parity: a missing required mantra path exits 2, exactly
+    # like launch (docs/how-to.md promises this).
+    agents_noskill="$(mktemp -d)"
+    status=0
+    out="$(cd "${agents_cwd}" && MY_PI_AGENT_HOME="{{root}}" PI_SKILLS_HOME="${agents_noskill}" "${bin}" agents ruby 2>&1)" || status=$?
+    test "${status}" -eq 2
+    grep -q 'missing required mantra' <<<"${out}"
+    rm -rf "${agents_noskill}"
     bun test "{{root}}/extensions/agentScan.test.ts" "{{root}}/extensions/capabilities.test.ts" "{{root}}/extensions/boot-config.test.ts" "{{root}}/extensions/clarify-gate.test.ts" "{{root}}/extensions/agent-chain.test.ts" "{{root}}/extensions/agent-team.test.ts" "{{root}}/extensions/subagent.test.ts" "{{root}}/extensions/agents-view.test.ts" "{{root}}/extensions/installed-skills.test.ts" "{{root}}/extensions/fusion-harness/tests" "{{root}}/scripts/skills-bootstrap.test.ts"
     bun build "{{root}}/extensions/themeMap.ts" "{{root}}/extensions/minimal.ts" "{{root}}/extensions/purpose-gate.ts" \
       "{{root}}/extensions/cross-agent.ts" "{{root}}/extensions/system-select.ts" \

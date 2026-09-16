@@ -28,10 +28,10 @@ export interface ResolvedAgentsView {
 }
 
 /**
- * Resolve everything the inspector shows for cwd + vida. envs read:
+ * Resolve everything the inspector shows for cwd + vida. envs read here:
  * PI_VIDA_HOME / PI_LIFE_HOME / MY_PI_AGENT_HOME (harness root), PI_TEAM
- * (active team), PI_OVERLAY (role models/thinking). An invalid vida fails
- * closed: empty discovery, no team, no orders — never a broad scan.
+ * (active team). An invalid vida fails closed: empty discovery, no team,
+ * no orders — never a broad scan.
  */
 export function resolvedAgentsView(
 	cwd: string,
@@ -71,9 +71,10 @@ export function resolvedAgentsView(
 		try {
 			const teams = parseAgentTeams(readFileSync(chainFile.path, "utf-8"));
 			const wanted = process.env.PI_TEAM?.trim() || undefined;
-			// PI_TEAM names the active team only when it actually won.
 			const team = pickTeam(teams, wanted);
-			const via = wanted && team.name === wanted ? "PI_TEAM" : "default";
+			// pickTeam throws on an unknown wanted, so a returned team under a
+			// wanted set can only be that team.
+			const via = wanted ? "PI_TEAM" : "default";
 			view.team = { name: team.name, members: [...team.members], via };
 		} catch (e) {
 			// ChainError covers the documented degrade paths: malformed chain
@@ -113,7 +114,7 @@ export function formatAgentsView(v: ResolvedAgentsView): string {
 	for (const a of v.agents) {
 		lines.push(`agent: ${a.name}`);
 		lines.push(`  source: ${a.source}`);
-		lines.push(`  path: ${a.path ?? ""}`);
+		lines.push(`  path: ${a.path}`);
 		lines.push(`  tools: ${a.tools.join(", ")}`);
 		lines.push(`  model: ${overlay?.models?.[a.name] ?? "inherit"}`);
 		lines.push(`  thinking: ${overlay?.thinking?.[a.name] ?? "inherit"}`);
