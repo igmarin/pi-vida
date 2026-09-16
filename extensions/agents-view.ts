@@ -68,19 +68,26 @@ export function resolvedAgentsView(
 	const chainFile = candidates.find((c) => existsSync(c.path));
 	if (chainFile) {
 		view.chainFile = { source: chainFile.source, path: chainFile.path };
-		const teams = parseAgentTeams(readFileSync(chainFile.path, "utf-8"));
-		if (teams.size > 0) {
-			const wanted = process.env.PI_TEAM?.trim() || undefined;
-			// An unknown PI_TEAM throws in pickTeam (agent-team.ts fails the
-			// session); the inspector degrades to team: none instead.
-			try {
-				const team = pickTeam(teams, wanted);
-				// PI_TEAM names the active team only when it actually won.
-				const via = wanted && team.name === wanted ? "PI_TEAM" : "default";
-				view.team = { name: team.name, members: [...team.members], via };
-			} catch {
-				view.team = null;
+		// Malformed chain YAML must not crash the inspector (launch fails
+		// closed on it; the view degrades to team: none and still shows
+		// agents/orders).
+		try {
+			const teams = parseAgentTeams(readFileSync(chainFile.path, "utf-8"));
+			if (teams.size > 0) {
+				const wanted = process.env.PI_TEAM?.trim() || undefined;
+				// An unknown PI_TEAM throws in pickTeam (agent-team.ts fails the
+				// session); the inspector degrades to team: none instead.
+				try {
+					const team = pickTeam(teams, wanted);
+					// PI_TEAM names the active team only when it actually won.
+					const via = wanted && team.name === wanted ? "PI_TEAM" : "default";
+					view.team = { name: team.name, members: [...team.members], via };
+				} catch {
+					view.team = null;
+				}
 			}
+		} catch {
+			view.team = null;
 		}
 	}
 	view.agentOrder = agentSources(root, view.vida, cwd, home).map((s) =>

@@ -69,7 +69,7 @@ pi-vida agents ruby            # resolved view for cwd + vida
 pi-vida agents nope            # unknown vida → exit 2
 ```
 
-Prints, per cwd: winner and shadowed personas (`agent:` / `shadows:`), the active team and members (`team:`, `members:`; `PI_TEAM` is marked; an unknown `PI_TEAM` prints `team: none`), the chain file that won, **both** discovery orders with `*` marking candidates that exist on disk, and the `--skill` paths launch would pass — the solo/base allowlist (chain/team build on it), resolved by the same code path as launch, so a missing mantra/tracker exits 2 and missing packs warn. The bun-side resolver is `resolvedAgentsView` in `extensions/agents-view.ts` (the in-session `/agents` command builds on it).
+`key: value` lines: winner/shadowed personas, active team (`team:` / `members:`), the chain file that won, both discovery orders (`*` = exists on disk), and the `--skill` paths launch would pass. Semantics in CONTEXT.md (Agent / Chain); resolver: `resolvedAgentsView` in `extensions/agents-view.ts`.
 
 ## Model fusion
 

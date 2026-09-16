@@ -118,6 +118,15 @@ test("missing chain file: team none and chain-file none", () => {
 	expect(out).not.toContain("members:");
 });
 
+test("malformed chain file degrades to team none without throwing", () => {
+	seed();
+	writeFileSync(join(harness, "profiles/agents/agent-chain.yaml"), "teams: [broken");
+	const v = resolvedAgentsView(cwd, "ruby", import.meta.url, home);
+	expect(v.chainFile?.path).toBe(join(harness, "profiles/agents/agent-chain.yaml"));
+	expect(v.team).toBeNull();
+	expect(v.agents.length).toBe(2);
+});
+
 test("invalid vida fails closed: empty discovery", () => {
 	seed();
 	const v = resolvedAgentsView(cwd, "nosuch", import.meta.url, home);

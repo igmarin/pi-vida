@@ -753,7 +753,7 @@ main() {
       agents_root="$(resolve_root)"
       collect_launch_args "${agents_root}" "${agents_life}" solo
       script_dir="$(cd "$(dirname "$(real_script_path)")" && pwd)"
-      bun "${script_dir}/../extensions/agents-view.ts" "${PWD}" "${agents_life}"
+      bun "${script_dir}/../extensions/agents-view.ts" "${PWD}" "${agents_life}" || exit 2
       local skill_arg next_is_skill=0
       for skill_arg in "${pi_args[@]}"; do
         if [[ "${next_is_skill}" -eq 1 ]]; then

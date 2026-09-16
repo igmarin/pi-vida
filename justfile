@@ -697,6 +697,7 @@ smoke:
     '
     # Issue #81: pi-vida agents <vida> — the resolved view from a temp cwd.
     agents_cwd="$(mktemp -d)"
+    trap 'rm -rf "${agents_cwd}"' RETURN
     agents_out="$(cd "${agents_cwd}" && MY_PI_AGENT_HOME="{{root}}" PI_SKILLS_HOME="${tmp}" "${bin}" agents ruby 2>"${tmp}/agents.err")"
     grep -q '^vida: ruby$' <<<"${agents_out}"
     grep -q 'profiles/agents/planner.yaml' <<<"${agents_out}"
@@ -723,7 +724,6 @@ smoke:
     test "${status}" -eq 2
     grep -q 'not a vida' <<<"${agents_bad}"
     grep -q 'use ruby or python' <<<"${agents_bad}"
-    rm -rf "${agents_cwd}"
     bun test "{{root}}/extensions/agentScan.test.ts" "{{root}}/extensions/capabilities.test.ts" "{{root}}/extensions/boot-config.test.ts" "{{root}}/extensions/clarify-gate.test.ts" "{{root}}/extensions/agent-chain.test.ts" "{{root}}/extensions/agent-team.test.ts" "{{root}}/extensions/subagent.test.ts" "{{root}}/extensions/agents-view.test.ts" "{{root}}/extensions/installed-skills.test.ts" "{{root}}/extensions/fusion-harness/tests" "{{root}}/scripts/skills-bootstrap.test.ts"
     bun build "{{root}}/extensions/themeMap.ts" "{{root}}/extensions/minimal.ts" "{{root}}/extensions/purpose-gate.ts" \
       "{{root}}/extensions/cross-agent.ts" "{{root}}/extensions/system-select.ts" \
