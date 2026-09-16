@@ -71,7 +71,6 @@ import { deserializeOverlayEnv } from "./capabilities.ts";
 import {
 	getFinalOutput,
 	isFailedResult,
-	resolveHarnessRoot,
 	resultOutput,
 	runSingleAgent,
 	drainInflight,
@@ -647,14 +646,14 @@ export default function (pi: ExtensionAPI) {
 					"info",
 				);
 			const agents = collectAgents(ctx.cwd, import.meta.url);
-			const harnessRoot = resolveHarnessRoot();
+			const childRoot = harnessRoot();
 			const dispatchModel = ctx.model
 				? `${ctx.model.provider}/${ctx.model.id}`
 				: undefined;
 			try {
 				const { output } = await runChainSteps(chain, task, {
 					agents,
-					harnessRoot,
+					harnessRoot: childRoot,
 					cwd: ctx.cwd,
 					shutdown: shutdown.signal,
 					dispatchModel,
@@ -719,14 +718,14 @@ export default function (pi: ExtensionAPI) {
 				};
 			}
 			const agents = collectAgents(ctx.cwd, import.meta.url);
-			const harnessRoot = resolveHarnessRoot();
+			const childRoot = harnessRoot();
 			const dispatchModel = ctx.model
 				? `${ctx.model.provider}/${ctx.model.id}`
 				: undefined;
 			try {
 				const { output } = await runChainSteps(chain, task, {
 					agents,
-					harnessRoot,
+					harnessRoot: childRoot,
 					cwd: ctx.cwd,
 					signal,
 					shutdown: shutdown.signal,
