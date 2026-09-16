@@ -130,33 +130,27 @@ describe("team-member extension (#79)", () => {
 		}
 	});
 
-	test("unknown member: session_start error notify, no enforcement", async () => {
+	test("unknown member: session_start notifies error and fails startup", async () => {
 		const restore = prevRestore("PI_VIDA_WORKER");
 		process.env.PI_VIDA_WORKER = "nobody";
 		const cwd = agentCwd();
 		const restoreHarness = isolateHarness(cwd);
 		try {
 			const { events, setActiveToolsCalls } = loadMember();
-			const sys = await events.before_agent_start(
-				{
-					type: "before_agent_start",
-					prompt: "hi",
-					systemPrompt: "BASE",
-					systemPromptOptions: {},
-				},
-				{ cwd, hasUI: true },
-			);
-			expect(sys).toBeUndefined();
 			const seen: { msg: string; level?: string }[] = [];
-			await events.session_start({ type: "session_start", reason: "startup" }, {
-				cwd,
-				hasUI: true,
-				ui: { notify: (msg: string, level?: string) => seen.push({ msg, level }) },
-			});
-			expect(setActiveToolsCalls).toEqual([]);
+			// Persona resolution is part of the member startup contract: a
+			// missing persona must fail the member session, not degrade to an
+			// unrestricted solo agent the primary still counts as a member.
+			await expect(
+				events.session_start({ type: "session_start", reason: "startup" }, {
+					cwd,
+					hasUI: true,
+					ui: { notify: (msg: string, level?: string) => seen.push({ msg, level }) },
+				}),
+			).rejects.toThrow(/nobody/);
 			expect(seen.length).toBe(1);
 			expect(seen[0].level).toBe("error");
-			expect(seen[0].msg).toMatch(/nobody/);
+			expect(setActiveToolsCalls).toEqual([]);
 		} finally {
 			restoreHarness();
 			restore();

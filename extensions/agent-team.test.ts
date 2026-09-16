@@ -530,6 +530,82 @@ process.exit(0);
 			rmSync(cwd, { recursive: true, force: true });
 		}
 	}, 12_000);
+
+	test("same-member dispatches serialize; different members run concurrently", async () => {
+		const cwd = teamCwd();
+		try {
+			// Fake herdr where every prompt sleeps until marked: the run's output
+			// records the interleaving (finish order proves serialization).
+			const dir = mkdtempSync(join(tmpdir(), "fake-herdr-queue-"));
+			const logFile = join(dir, "log");
+			const script = `#!/usr/bin/env bun
+import { appendFileSync } from "node:fs";
+const args = process.argv.slice(2);
+appendFileSync(${JSON.stringify(logFile)}, JSON.stringify(args) + "\\n");
+if (args[0] === "agent" && args[1] === "prompt") {
+	await Bun.sleep(args.includes("first") ? 300 : 30);
+	process.exit(0);
+}
+if (args[0] === "agent" && args[1] === "read") {
+	console.log("PANE-OUTPUT: builder finished the task");
+	process.exit(0);
+}
+process.exit(0);
+`;
+			writeFileSync(join(dir, "herdr"), script, { mode: 0o755 });
+			const prevPath = process.env.PATH;
+			const prevHerdrEnv = process.env.HERDR_ENV;
+			const prevMembers = process.env.PI_HERDR_MEMBERS;
+			const prevTimeout = process.env.PI_CHILD_TIMEOUT_MS;
+			const prevLife = process.env.PI_LIFE;
+			const prevVida = process.env.PI_VIDA;
+			const prevHome = process.env.MY_PI_AGENT_HOME;
+			const prevVidaHome = process.env.PI_VIDA_HOME;
+			process.env.PATH = `${dir}${delimiter}${prevPath ?? ""}`;
+			process.env.HERDR_ENV = "1";
+			process.env.PI_HERDR_MEMBERS = "builder";
+			delete process.env.PI_LIFE;
+			delete process.env.PI_VIDA;
+			delete process.env.MY_PI_AGENT_HOME;
+			delete process.env.PI_VIDA_HOME;
+			try {
+				const { tools } = loadTeam();
+				// Fire two prompts at the same member concurrently. The second
+				// must not START until the first prompt settles.
+				const p1 = tools.dispatch_agent.execute("id", { agent: "builder", task: "first" }, new AbortController().signal, undefined, ctxOf(cwd));
+				const p2 = tools.dispatch_agent.execute("id", { agent: "builder", task: "second" }, new AbortController().signal, undefined, ctxOf(cwd));
+				const [r1, r2] = await Promise.all([p1, p2]);
+				expect(r1.isError).toBeFalsy();
+				expect(r2.isError).toBeFalsy();
+				// Prompt starts are serialized: first prompt's argv logged before
+				// second prompt's argv (single writer, prompt lines only).
+				const promptOrder = logCalls(logFile)
+					.map((c) => (c[0] === "agent" && c[1] === "prompt" ? c[3] : null))
+					.filter(Boolean);
+				expect(promptOrder).toEqual(["first", "second"]);
+			} finally {
+				if (prevPath === undefined) delete process.env.PATH;
+				else process.env.PATH = prevPath;
+				if (prevHerdrEnv === undefined) delete process.env.HERDR_ENV;
+				else process.env.HERDR_ENV = prevHerdrEnv;
+				if (prevMembers === undefined) delete process.env.PI_HERDR_MEMBERS;
+				else process.env.PI_HERDR_MEMBERS = prevMembers;
+				if (prevTimeout === undefined) delete process.env.PI_CHILD_TIMEOUT_MS;
+				else process.env.PI_CHILD_TIMEOUT_MS = prevTimeout;
+				if (prevLife === undefined) delete process.env.PI_LIFE;
+				else process.env.PI_LIFE = prevLife;
+				if (prevVida === undefined) delete process.env.PI_VIDA;
+				else process.env.PI_VIDA = prevVida;
+				if (prevHome === undefined) delete process.env.MY_PI_AGENT_HOME;
+				else process.env.MY_PI_AGENT_HOME = prevHome;
+				if (prevVidaHome === undefined) delete process.env.PI_VIDA_HOME;
+				else process.env.PI_VIDA_HOME = prevVidaHome;
+				rmSync(dir, { recursive: true, force: true });
+			}
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	}, 15_000);
 });
 
 describe("agent-team team-list and session_start notify (#77)", () => {

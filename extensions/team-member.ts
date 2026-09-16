@@ -41,13 +41,14 @@ export default function (pi: ExtensionAPI) {
 			(a) => a.name.toLowerCase() === name.toLowerCase(),
 		);
 		if (!agent) {
-			if (ctx.hasUI) {
-				ctx.ui.notify(
-					`team-member: no persona found for worker '${name}' — running without agent enforcement`,
-					"error",
-				);
-			}
-			return;
+			// Persona resolution is part of the member startup contract (#79):
+			// a pane without its persona would run unrestricted while the
+			// primary still counts it in PI_HERDR_MEMBERS. Throw so the session
+			// start fails (the runner surfaces it and pi exits non-zero) — the
+			// pane stays open for the user, never a silent unrestricted member.
+			const message = `team-member: no persona found for worker '${name}' — member startup failed`;
+			if (ctx.hasUI) ctx.ui.notify(message, "error");
+			throw new Error(message);
 		}
 		if (agent.tools.length > 0) pi.setActiveTools(agent.tools);
 		if (ctx.hasUI) {

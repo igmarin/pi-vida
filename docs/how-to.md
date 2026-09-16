@@ -196,7 +196,7 @@ herdr agent start lead --kind pi -- pi-vida ruby team
 # `pi-vida ruby solo` with PI_VIDA_WORKER=<member> exported.
 ```
 
-- Members are **solo** sessions (never nested team dispatchers) with a reduced base: damage-control + capabilities + team-member + `--no-skills`. No boot-config wizard, no clarify-gate (workers skip the ritual), no status-line. A member resolves its model like any solo session (`models.solo`/`thinking.solo` from the merged overlay); per-member role maps stay a dispatch-time concern of `agent-team.ts`.
+- Members are **solo** sessions (never nested team dispatchers) with a reduced base: damage-control + capabilities + team-member + `--no-skills`. No boot-config wizard, no clarify-gate (workers skip the ritual), no status-line. A member that cannot resolve its persona fails its session start — it never degrades to an unrestricted solo agent. It resolves its model like any solo session (`models.solo`/`thinking.solo` from the merged overlay); per-member role maps stay a dispatch-time concern of `agent-team.ts`.
 - The primary exports `PI_HERDR_MEMBERS` and `dispatch_agent` prompts that member's pane with `herdr agent prompt <member> <task> --wait`, then reads the answer with `herdr agent read <member> --source recent-unwrapped`. Dispatching a name the launcher did not start is an immediate error, not a hang.
 - Fail closed: if any `pane split`/`agent start` fails, pi-vida prints stderr and exits 2 — it never falls back to hidden children in the same session. Panes already created stay open; quit of the primary aborts in-flight prompts and leaves panes alone.
 - Outside Herdr nothing changes: members are hidden `pi` children with the SIGTERM→SIGKILL contract, and no `herdr` binary is required.

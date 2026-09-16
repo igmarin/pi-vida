@@ -80,6 +80,12 @@ export interface HerdrDispatchResult {
  *  an abort kill is still racing. */
 const herdrInflight = new Set<Promise<unknown>>();
 
+/** Per-member dispatch queues (#79): one member pane serves one turn at a
+ *  time — herdr's `--wait` matches turn states, not turns, so overlapping
+ *  prompts to the same member could let one completion satisfy the other's
+ *  wait and cross the outputs. Different members run concurrently. */
+const herdrQueues = new Map<string, Promise<unknown>>();
+
 /** Wait until in-flight herdr dispatches settle. Capped at grace+1s so a
  *  wedged child cannot hang shutdown (the kill timer is the backstop). */
 export async function drainHerdrInflight(): Promise<void> {
@@ -97,7 +103,8 @@ export async function drainHerdrInflight(): Promise<void> {
 	}
 }
 
-/** Dispatch one member via herdr, tracked for shutdown drain (#79). */
+/** Dispatch one member via herdr, serialized per member and tracked for
+ *  shutdown drain (#79). */
 export function herdrDispatch(
 	agentName: string,
 	task: string,
@@ -105,7 +112,15 @@ export function herdrDispatch(
 	signal?: AbortSignal,
 	shutdown?: AbortSignal,
 ): Promise<HerdrDispatchResult> {
-	const tracked = herdrDispatchOnce(agentName, task, members, signal, shutdown);
+	const prev = herdrQueues.get(agentName) ?? Promise.resolve();
+	const tracked = prev.then(
+		() => herdrDispatchOnce(agentName, task, members, signal, shutdown),
+		() => herdrDispatchOnce(agentName, task, members, signal, shutdown),
+	);
+	herdrQueues.set(
+		agentName,
+		tracked.catch(() => {}),
+	);
 	herdrInflight.add(tracked);
 	void tracked.finally(() => herdrInflight.delete(tracked));
 	return tracked;
