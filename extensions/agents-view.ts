@@ -8,9 +8,15 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { type AgentDef, agentSources, canonicalLife, discover, harnessRoot } from "./agentScan.ts";
-import { chainCandidates, ChainError, parseAgentTeams, pickTeam } from "./agent-chain.ts";
+import {
+	chainCandidates,
+	ChainError,
+	parseAgentTeams,
+	pickTeam,
+	resolveChainFile,
+} from "./agent-chain.ts";
 import { overlayFromEnv } from "./capabilities.ts";
 
 export interface ResolvedAgentsView {
@@ -40,8 +46,9 @@ export function resolvedAgentsView(
 	home = homedir(),
 ): ResolvedAgentsView {
 	const root = harnessRoot(extFileUrl);
+	const absCwd = resolve(cwd);
 	const view: ResolvedAgentsView = {
-		cwd,
+		cwd: absCwd,
 		harnessRoot: root,
 		vida: canonicalLife(vida),
 		team: null,
@@ -53,7 +60,7 @@ export function resolvedAgentsView(
 	};
 	if (vida && !view.vida) return view;
 
-	const groups = discover(cwd, extFileUrl, home, view.vida);
+	const groups = discover(absCwd, extFileUrl, home, view.vida);
 	for (const g of groups) view.agents.push(...g.agents);
 	// A shadowed entry always lost first-wins to a winner in an earlier
 	// group; shadowedBy is that winner's exact name (files may differ in case).
@@ -64,8 +71,8 @@ export function resolvedAgentsView(
 		}
 	}
 
-	const candidates = chainCandidates(cwd, extFileUrl, view.vida);
-	const chainFile = candidates.find((c) => existsSync(c.path));
+	const candidates = chainCandidates(absCwd, extFileUrl, view.vida);
+	const chainFile = resolveChainFile(absCwd, extFileUrl, view.vida);
 	if (chainFile) {
 		view.chainFile = { source: chainFile.source, path: chainFile.path };
 		try {
@@ -77,14 +84,15 @@ export function resolvedAgentsView(
 			const via = wanted ? "PI_TEAM" : "default";
 			view.team = { name: team.name, members: [...team.members], via };
 		} catch (e) {
-			// ChainError covers the documented degrade paths: malformed chain
-			// YAML (parse) and an unknown PI_TEAM (pickTeam). Anything else is
-			// a real bug — rethrow, never mask it as team: none.
+			// Intentional graceful degrade for a read-only inspector: malformed
+			// chain YAML (parse) and an unknown PI_TEAM (pickTeam) surface as
+			// team: none instead of the errors the chain/team launch modes
+			// raise. Anything else is a real bug — rethrow, never mask it.
 			if (!(e instanceof ChainError)) throw e;
 			view.team = null;
 		}
 	}
-	view.agentOrder = agentSources(root, view.vida, cwd, home).map((s) =>
+	view.agentOrder = agentSources(root, view.vida, absCwd, home).map((s) =>
 		existsSync(s.agents) ? `*${s.source}` : s.source,
 	);
 	view.chainOrder = candidates.map((c) => (existsSync(c.path) ? `*${c.source}` : c.source));

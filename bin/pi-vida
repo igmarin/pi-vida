@@ -752,6 +752,7 @@ main() {
       local agents_root
       agents_root="$(resolve_root)"
       collect_launch_args "${agents_root}" "${agents_life}" solo
+      local script_dir
       script_dir="$(cd "$(dirname "$(real_script_path)")" && pwd)"
       bun "${script_dir}/../extensions/agents-view.ts" "${PWD}" "${agents_life}" || exit 2
       local skill_arg next_is_skill=0
