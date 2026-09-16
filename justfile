@@ -725,6 +725,20 @@ smoke:
     test "${status}" -eq 2
     grep -q 'not a vida' <<<"${agents_bad}"
     grep -q 'use ruby or python' <<<"${agents_bad}"
+    # Per-agent model/thinking reflect the MERGED role payload (profile
+    # defaults folded under overlay overrides by collect_launch_args), not
+    # the raw project overlay — the same map children dispatch from.
+    agents_prof="${tmp}/agents-prof"
+    mkdir -p "${agents_prof}/profiles/python/agents" "${agents_prof}/i-have-adhd" "${agents_prof}/agents-cwd/.pi"
+    printf '%s\n' '# i-have-adhd' >"${agents_prof}/i-have-adhd/SKILL.md"
+    printf '%s\n' 'name: planner' 'description: p' 'tools: read' 'body: PLAN' >"${agents_prof}/profiles/python/agents/planner.yaml"
+    printf '%s\n' 'vida: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' \
+      'models:' '  planner: openrouter/profile-planner' >"${agents_prof}/profiles/python.yaml"
+    printf '%s\n' 'models:' '  planner: openrouter/overlay-planner' >"${agents_prof}/agents-cwd/.pi/capabilities.yaml"
+    agents_merge_out="$(cd "${agents_prof}/agents-cwd" && MY_PI_AGENT_HOME="${agents_prof}" PI_SKILLS_HOME="${agents_prof}" "${bin}" agents python 2>/dev/null)"
+    grep -q -- '  model: openrouter/overlay-planner' <<<"${agents_merge_out}"
+    ! grep -q 'openrouter/profile-planner' <<<"${agents_merge_out}"
+    rm -rf "${agents_prof}"
     bun test "{{root}}/extensions/agentScan.test.ts" "{{root}}/extensions/capabilities.test.ts" "{{root}}/extensions/boot-config.test.ts" "{{root}}/extensions/clarify-gate.test.ts" "{{root}}/extensions/agent-chain.test.ts" "{{root}}/extensions/agent-team.test.ts" "{{root}}/extensions/subagent.test.ts" "{{root}}/extensions/agents-view.test.ts" "{{root}}/extensions/installed-skills.test.ts" "{{root}}/extensions/fusion-harness/tests" "{{root}}/scripts/skills-bootstrap.test.ts"
     bun build "{{root}}/extensions/themeMap.ts" "{{root}}/extensions/minimal.ts" "{{root}}/extensions/purpose-gate.ts" \
       "{{root}}/extensions/cross-agent.ts" "{{root}}/extensions/system-select.ts" \

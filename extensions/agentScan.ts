@@ -42,10 +42,11 @@ export function canonicalLife(raw: string | undefined): string | undefined {
 }
 
 /** Single harness-root resolver (issue #81 re-review): PI_VIDA_HOME, else
- * PI_LIFE_HOME, else MY_PI_AGENT_HOME, else the dir containing extFileUrl.
- * discover, agentSources, agent-chain's harnessChainPath, and agents-view
- * all consume this one implementation so the view cannot disagree with
- * discovery. */
+ * PI_LIFE_HOME, else MY_PI_AGENT_HOME, else the parent of the directory
+ * containing extFileUrl (the harness checkout). Normalized to an absolute
+ * path so a relative env override cannot make the view, chain candidates,
+ * and child extension paths disagree. discover, agentSources, agent-chain's
+ * harnessChainPath, and agents-view all consume this one implementation. */
 export function harnessRoot(extFileUrl = import.meta.url): string {
 	return resolve(process.env.PI_VIDA_HOME || process.env.PI_LIFE_HOME || process.env.MY_PI_AGENT_HOME || join(dirname(fileURLToPath(extFileUrl)), ".."));
 }
