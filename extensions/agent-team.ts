@@ -12,10 +12,17 @@
  * ## Behavior
  *
  * The primary cannot read, write, or shell out: it plans, splits the work, and
- * dispatches. `dispatch_agent(agent, task)` runs a team member as a child `pi`
- * via `subagentHelpers.runSingleAgent` (INV-skills: children ALWAYS inherit
- * `-e damage-control-continue.ts --no-skills`). Only members of the active
- * team may be dispatched — arbitrary agent names are rejected.
+ * dispatches. `dispatch_agent(agent, task)` runs a team member. Outside Herdr
+ * (`HERDR_ENV` unset) it runs a child `pi` via `subagentHelpers.runSingleAgent`
+ * (INV-skills: children ALWAYS inherit `-e damage-control-continue.ts
+ * --no-skills`). Inside Herdr (`HERDR_ENV=1`, INV-herdr #79) the launcher has
+ * started one pane per member and exported `PI_HERDR_MEMBERS`; dispatch
+ * prompts that member with `herdr agent prompt <member> <task> --wait` and
+ * reads the answer back with `herdr agent read <member> --source
+ * recent-unwrapped`. Members not started by the launcher are rejected before
+ * any `herdr` call (prompt-only exception; no agent lifecycle here). Only
+ * members of the active team may be dispatched — arbitrary agent names are
+ * rejected.
  *
  * ## Team discovery
  *
@@ -26,6 +33,7 @@
  * defined team. `/team-list` shows what is available.
  */
 
+import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
@@ -38,14 +46,208 @@ import { collectAgents, harnessRoot } from "./agentScan.ts";
 import { formatTeamList } from "./agents-view.ts";
 import {
 	aggregateUsage,
+	childTimeoutMs,
 	formatUsageStats,
 	getFinalOutput,
 	isFailedResult,
+	KILL_GRACE_MS,
 	resultOutput,
 	runSingleAgent,
 	drainInflight,
+	truncateParallelOutput,
 	type SingleResult,
 } from "./subagentHelpers.ts";
+
+/** One `herdr` child run (prompt-only; INV-herdr #79). Resolves
+ *  { code, stdout, stderr }; never throws on a failed child. */
+interface HerdrRun {
+	code: number;
+	/** stdout — pane text for `agent read` (prompt's stdout is chatter). */
+	stdout: string;
+	/** stderr (herdr diagnostics go to stderr). */
+	stderr: string;
+}
+
+/** Result of a herdr-backed dispatch: error text or the pane output. */
+export interface HerdrDispatchResult {
+	ok: boolean;
+	error?: string;
+	output?: string;
+}
+
+/** In-flight herdr dispatches. session_shutdown drains these the same way
+ *  subagentHelpers drains hidden children, so the primary cannot exit while
+ *  an abort kill is still racing. */
+const herdrInflight = new Set<Promise<unknown>>();
+
+/** Per-member dispatch queues (#79): one member pane serves one turn at a
+ *  time — herdr's `--wait` matches turn states, not turns, so overlapping
+ *  prompts to the same member could let one completion satisfy the other's
+ *  wait and cross the outputs. Different members run concurrently. */
+const herdrQueues = new Map<string, Promise<unknown>>();
+
+/** Wait until in-flight herdr dispatches settle. Capped at grace+1s so a
+ *  wedged child cannot hang shutdown (the kill timer is the backstop). */
+export async function drainHerdrInflight(): Promise<void> {
+	if (herdrInflight.size === 0) return;
+	let t: ReturnType<typeof setTimeout> | undefined;
+	try {
+		await Promise.race([
+			Promise.allSettled([...herdrInflight]),
+			new Promise<void>((r) => {
+				t = setTimeout(r, KILL_GRACE_MS + 1_000);
+			}),
+		]);
+	} finally {
+		if (t) clearTimeout(t);
+	}
+}
+
+/** Dispatch one member via herdr, serialized per member and tracked for
+ *  shutdown drain (#79). */
+export function herdrDispatch(
+	agentName: string,
+	task: string,
+	members: string[],
+	signal?: AbortSignal,
+	shutdown?: AbortSignal,
+): Promise<HerdrDispatchResult> {
+	const prev = herdrQueues.get(agentName) ?? Promise.resolve();
+	const tracked = prev.then(
+		() => herdrDispatchOnce(agentName, task, members, signal, shutdown),
+		() => herdrDispatchOnce(agentName, task, members, signal, shutdown),
+	);
+	herdrQueues.set(
+		agentName,
+		tracked.catch(() => {}),
+	);
+	herdrInflight.add(tracked);
+	void tracked.finally(() => herdrInflight.delete(tracked));
+	return tracked;
+}
+
+/** INV-herdr (#79): prompt-only `herdr` from this extension, and only against
+ *  members the launcher started (PI_HERDR_MEMBERS). Runs
+ *  `herdr agent prompt <member> <task> --wait --timeout <ms>` wired to
+ *  `signal`/`shutdown` (kill on abort/quit, same contract as the hidden-child
+ *  path), then the success path reads the pane with
+ *  `herdr agent read <member> --source recent-unwrapped --lines 200`,
+ *  truncated via truncateParallelOutput. Never starts/stops agents or panes. */
+async function herdrDispatchOnce(
+	agentName: string,
+	task: string,
+	members: string[],
+	signal?: AbortSignal,
+	shutdown?: AbortSignal,
+): Promise<HerdrDispatchResult> {
+	if (!members.includes(agentName)) {
+		return {
+			ok: false,
+			error: `'${agentName}' has no herdr pane. Members started in Herdr: ${members.join(", ") || "none"}.`,
+		};
+	}
+	const prompt = await runHerdr(
+		[
+			"agent",
+			"prompt",
+			agentName,
+			task,
+			"--wait",
+			"--timeout",
+			String(childTimeoutMs()),
+		],
+		signal,
+		shutdown,
+	);
+	if (prompt.code !== 0) {
+		const tail = prompt.stderr.trim().split("\n").slice(-3).join("\n");
+		return { ok: false, error: `herdr agent prompt ${agentName} failed: ${tail || "aborted"}` };
+	}
+	const read = await runHerdr(
+		["agent", "read", agentName, "--source", "recent-unwrapped", "--lines", "200"],
+		signal,
+		shutdown,
+	);
+	if (read.code !== 0) {
+		const tail = read.stderr.trim().split("\n").slice(-3).join("\n");
+		return { ok: false, error: `herdr agent read ${agentName} failed: ${tail || "aborted"}` };
+	}
+	return { ok: true, output: truncateParallelOutput(read.stdout) };
+}
+
+/** One `herdr` child run (prompt-only; INV-herdr #79). Process-group kill on
+ *  abort — same contract as the hidden-child spawn in subagentHelpers
+ *  (SIGTERM, then SIGKILL after the grace; escalation on parent exit is the
+ *  exit-handler's job there, ours is short-lived). Resolves { code, stdout,
+ *  stderr }; never throws on a failed child. */
+async function runHerdr(
+	args: string[],
+	signal?: AbortSignal,
+	shutdown?: AbortSignal,
+): Promise<HerdrRun> {
+	const { promise, resolve } = Promise.withResolvers<HerdrRun>();
+	const proc = spawn("herdr", args, {
+		shell: false,
+		detached: process.platform !== "win32",
+		stdio: ["ignore", "pipe", "pipe"],
+	});
+	let stdout = "";
+	let stderr = "";
+	let closed = false;
+	let killTimer: ReturnType<typeof setTimeout> | null = null;
+	const signalTree = (sig: NodeJS.Signals) => {
+		try {
+			if (process.platform !== "win32" && proc.pid) process.kill(-proc.pid, sig);
+			else proc.kill(sig);
+		} catch {
+			try {
+				proc.kill(sig);
+			} catch {
+				/* ignore */
+			}
+		}
+	};
+	const killChild = () => {
+		signalTree("SIGTERM");
+		if (killTimer) clearTimeout(killTimer);
+		killTimer = setTimeout(() => {
+			killTimer = null;
+			if (!closed) signalTree("SIGKILL");
+		}, KILL_GRACE_MS);
+	};
+	const onAbort = () => killChild();
+	const onData = (data: Buffer) => {
+		stderr += data.toString();
+	};
+	const onStdout = (data: Buffer) => {
+		stdout += data.toString();
+	};
+	const cleanup = () => {
+		if (killTimer) clearTimeout(killTimer);
+		signal?.removeEventListener("abort", onAbort);
+		shutdown?.removeEventListener("abort", onAbort);
+	};
+	proc.stderr?.on("data", onData);
+	proc.stdout?.on("data", onStdout);
+	proc.on("close", (code) => {
+		closed = true;
+		cleanup();
+		resolve({ code: code ?? 1, stdout, stderr });
+	});
+	proc.on("error", (err) => {
+		closed = true;
+		cleanup();
+		resolve({ code: 1, stdout, stderr: `${stderr}${err.message}\n` });
+	});
+	const watch = (sig?: AbortSignal) => {
+		if (!sig) return;
+		if (sig.aborted) onAbort();
+		else sig.addEventListener("abort", onAbort, { once: true });
+	};
+	watch(signal);
+	watch(shutdown);
+	return promise;
+}
 
 /** Resolve + parse the team map for a cwd, mirroring chain discovery. */
 export function loadedTeams(cwd: string): {
@@ -67,7 +269,7 @@ export default function (pi: ExtensionAPI) {
 	const shutdown = new AbortController();
 	pi.on("session_shutdown", async () => {
 		shutdown.abort();
-		await drainInflight();
+		await Promise.all([drainInflight(), drainHerdrInflight()]);
 	});
 	// Dispatcher-only primary: no read, write, edit, or bash. Mutual exclusion
 	// with chain/tilldone is structural — the launcher never loads those
@@ -165,6 +367,29 @@ export default function (pi: ExtensionAPI) {
 						},
 					],
 					isError: true,
+				};
+			}
+
+			// INV-herdr (#79): inside Herdr the launcher started one pane per
+			// member and exported PI_HERDR_MEMBERS; dispatch prompts that pane
+			// and reads the answer back. Outside Herdr the hidden-child path
+			// below is byte-identical to the pre-#79 behavior.
+			if (process.env.HERDR_ENV === "1") {
+				const members = (process.env.PI_HERDR_MEMBERS ?? "")
+					.split(",")
+					.map((m) => m.trim())
+					.filter(Boolean);
+				const r = await herdrDispatch(agentName, task, members, signal, shutdown.signal);
+				if (!r.ok) {
+					return {
+						content: [{ type: "text", text: r.error ?? "herdr dispatch failed." }],
+						details: { team: team.name, agent: agentName },
+						isError: true,
+					};
+				}
+				return {
+					content: [{ type: "text", text: r.output || "(no output)" }],
+					details: { team: team.name, agent: agentName },
 				};
 			}
 

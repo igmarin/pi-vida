@@ -57,7 +57,7 @@ Skills resolve to directories under `~/.agents/skills`. `just skills` clones the
 
 ## Herdr (host)
 
-Herdr is the host for parallel work: workspaces, panes, `herdr worktree`, and `herdr agent start --kind pi`. Herdr launches `pi-vida` itself; the harness never wraps Herdr in a Pi extension. Example: `herdr agent start reviewer --kind pi -- pi-vida ruby`.
+Herdr is the host for parallel work: workspaces, panes, `herdr worktree`, and `herdr agent start --kind pi`. Herdr launches `pi-vida` itself; the harness never wraps Herdr in a Pi extension. Example: `herdr agent start reviewer --kind pi -- pi-vida ruby`. Inside Herdr, `pi-vida <vida> team` goes pane-native (INV-herdr, amends #19): the launcher splits one pane per team member (`herdr agent start <member> --kind pi -- pi-vida <vida> solo`) and `dispatch_agent` prompts members with `herdr agent prompt --wait` — only members the launcher started, only while `HERDR_ENV=1`. Outside Herdr team mode stays on hidden children + kill.
 
 The `herdr` skill is on the mantra allowlist of every vida. It no-ops unless `HERDR_ENV=1`, so a plain terminal is unaffected. `pi-vida doctor` warns (never fails) when `herdr` is not on PATH. Prefer `herdr worktree` when already inside Herdr; `stacked-pr-worktree-workflow` stays for gh-stack PR topology.
 

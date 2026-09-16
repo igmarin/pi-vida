@@ -104,6 +104,17 @@ smoke:
     echo "${rust_chain_out}" | grep -q -- "-e ${root}/extensions/agents-view.ts"
     echo "${rust_team_out}" | grep -q -- "-e ${root}/extensions/agents-view.ts"
 
+    # Issue #79 (INV-herdr): team dry-run inside Herdr prints one
+    # `herdr agent start` per member on stderr and makes no herdr calls.
+    herdr_team_err="${tmp}/herdr-team.err"
+    HERDR_ENV=1 "${bin}" --dry-run rust team 2>"${herdr_team_err}" >/dev/null
+    for member in planner builder reviewer researcher; do
+      grep -qE "pi-vida: herdr: agent start ${member} --kind pi -- .* --no-skills pi-vida rust solo" "${herdr_team_err}"
+    done
+    # Outside-Herdr primary argv is unchanged: dispatcher, not member base.
+    echo "${rust_team_out}" | grep -q -- "-e ${root}/extensions/agent-team.ts"
+    ! grep -q -- "team-member.ts" <<<"${rust_team_out}"
+
     # (p) fusion mode loads the vendored multi-model extension with an
     # explicit stack file; solo/team/chain argv never carry it.
     fusion_stack="${tmp}/model-stack-trio.yaml"
@@ -766,7 +777,7 @@ smoke:
     test "${status}" -eq 2
     grep -q 'missing required mantra' <<<"${out}"
     rm -rf "${agents_noskill}"
-    bun test "{{root}}/extensions/agentScan.test.ts" "{{root}}/extensions/capabilities.test.ts" "{{root}}/extensions/boot-config.test.ts" "{{root}}/extensions/clarify-gate.test.ts" "{{root}}/extensions/agent-chain.test.ts" "{{root}}/extensions/agent-team.test.ts" "{{root}}/extensions/subagent.test.ts" "{{root}}/extensions/agents-view.test.ts" "{{root}}/extensions/installed-skills.test.ts" "{{root}}/extensions/fusion-harness/tests" "{{root}}/scripts/skills-bootstrap.test.ts"
+    bun test "{{root}}/extensions/agentScan.test.ts" "{{root}}/extensions/capabilities.test.ts" "{{root}}/extensions/boot-config.test.ts" "{{root}}/extensions/clarify-gate.test.ts" "{{root}}/extensions/agent-chain.test.ts" "{{root}}/extensions/agent-team.test.ts" "{{root}}/extensions/team-member.test.ts" "{{root}}/extensions/subagent.test.ts" "{{root}}/extensions/agents-view.test.ts" "{{root}}/extensions/installed-skills.test.ts" "{{root}}/extensions/fusion-harness/tests" "{{root}}/scripts/skills-bootstrap.test.ts"
     bun build "{{root}}/extensions/themeMap.ts" "{{root}}/extensions/minimal.ts" "{{root}}/extensions/purpose-gate.ts" \
       "{{root}}/extensions/cross-agent.ts" "{{root}}/extensions/system-select.ts" \
       "{{root}}/extensions/damage-control-continue.ts" \
@@ -775,6 +786,7 @@ smoke:
       "{{root}}/extensions/clarify-gate.ts" \
       "{{root}}/extensions/agent-chain.ts" \
       "{{root}}/extensions/agent-team.ts" \
+      "{{root}}/extensions/team-member.ts" \
       "{{root}}/extensions/agents-view.ts" \
       "{{root}}/extensions/status-line.ts" \
       "{{root}}/extensions/subagent.ts" "{{root}}/extensions/subagentHelpers.ts" \

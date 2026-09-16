@@ -185,6 +185,22 @@ PI_TEAM=fast pi-vida ruby team    # override the active team (default: planner, 
 
 `/agents` (loaded in every launch mode) prints the resolved agents view — semantics in CONTEXT.md (Agent). `pi-vida agents <vida>` prints the same view plus the `--skill` paths the launcher would pass (those lines come from the launcher, not the view). Team mode also notifies the active team and member tool lists at session start.
 
+### Team panes inside Herdr (INV-herdr)
+
+Run team mode inside Herdr (`HERDR_ENV=1`) and the launcher does the pane work for you:
+
+```sh
+herdr agent start lead --kind pi -- pi-vida ruby team
+# one pane per member (planner, builder, reviewer, researcher) splits off the
+# primary: first to the right, the rest stacked downward — each running
+# `pi-vida ruby solo` with PI_VIDA_WORKER=<member> exported.
+```
+
+- Members are **solo** sessions (never nested team dispatchers) with a reduced base: damage-control + capabilities + team-member + `--no-skills`. No boot-config wizard, no clarify-gate (workers skip the ritual), no status-line. A member that cannot resolve its persona fails its session start — it never degrades to an unrestricted solo agent. It resolves its model like any solo session (`models.solo`/`thinking.solo` from the merged overlay); per-member role maps stay a dispatch-time concern of `agent-team.ts`.
+- The primary exports `PI_HERDR_MEMBERS` and `dispatch_agent` prompts that member's pane with `herdr agent prompt <member> <task> --wait`, then reads the answer with `herdr agent read <member> --source recent-unwrapped`. Dispatching a name the launcher did not start is an immediate error, not a hang.
+- Fail closed: if any `pane split`/`agent start` fails, pi-vida prints stderr and exits 2 — it never falls back to hidden children in the same session. Panes already created stay open; quit of the primary aborts in-flight prompts and leaves panes alone.
+- Outside Herdr nothing changes: members are hidden `pi` children with the SIGTERM→SIGKILL contract, and no `herdr` binary is required.
+
 ## rs-guard review flow
 
 - **Pre-commit**: reviews **staged** files; `REQUEST_CHANGES` (exit 2) aborts the commit. Bypass: `git commit --no-verify`.
@@ -201,7 +217,7 @@ pi-vida doctor ruby      # fail-closed preflight for the ruby vida
 
 `doctor <vida>` fails closed on missing `pi`/`bun` or missing mantra/tracker skill paths — the same contract the launcher enforces. Bare `doctor` sweeps all profiles and warns (deduped, exit 0) on missing mantra/tracker/pack skills so a fresh machine shows the gap before launch. Both modes still exit 2 on a malformed profile or `.dotskills-manifest.json` — a broken config is a launch failure, not a warning. Both warn on `just`, `rs-guard`, `ocr` (or `npx` to run it on demand), `herdr`, and a missing/incomplete `git config --get core.excludesfile` (needs: `node_modules`, `.pi/agent-sessions/`, `.env`, `graphify-out/`, `.codegraph/`).
 
-Herdr hosts parallel vidas: `herdr agent start reviewer --kind pi -- pi-vida ruby`. The `herdr` skill is allowlisted everywhere but no-ops unless `HERDR_ENV=1`.
+Herdr hosts parallel vidas: `herdr agent start reviewer --kind pi -- pi-vida ruby`. The `herdr` skill is allowlisted everywhere but no-ops unless `HERDR_ENV=1`. Inside Herdr, `pi-vida <vida> team` also uses it (see "Team panes inside Herdr" above) — the prompt-only exception to the extension-no-herdr rule.
 
 ## Troubleshooting
 
@@ -234,7 +250,9 @@ Herdr hosts parallel vidas: `herdr agent start reviewer --kind pi -- pi-vida rub
 | `PI_VIDA` | exported to children; agent/chain discovery uses it (harness internal) |
 | `PI_LIFE` | fallback for `PI_VIDA` (one release) |
 | `PI_OVERLAY` / `PI_OVERLAY_EXISTS` | launcher → extension overlay payload / first-launch skip flag (harness internal) |
-| `HERDR_ENV` | set by Herdr; enables the `herdr` skill |
+| `HERDR_ENV` | set by Herdr; enables the `herdr` skill. With team mode: launcher splits member panes and `dispatch_agent` prompts them (INV-herdr) |
+| `PI_VIDA_WORKER` | set by the launcher on each Herdr member pane; switches the member to the worker base argv (harness internal) |
+| `PI_HERDR_MEMBERS` | comma list of members the launcher started; `dispatch_agent` prompts only these inside Herdr (harness internal) |
 | `DEEPSEEK_API_KEY` | rs-guard provider key (env or `~/.config/rs-guard/env`) |
 | `COGNITION_API_KEY` | Cognition SWE endpoint key for fusion stacks (`models.json` interpolates `$COGNITION_API_KEY`) |
 
