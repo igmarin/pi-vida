@@ -155,7 +155,7 @@ export function formatTeamList(
 		const members = t.members
 			.map((m) => {
 				const a = agents.find((x) => x.name.toLowerCase() === m.toLowerCase());
-				return `${m} (${a ? a.tools.join(",") : "no agent file"})`;
+				return `${m} (${a ? (a.tools.length ? a.tools.join(",") : "no tools") : "no agent file"})`;
 			})
 			.join(", ");
 		return `${t.name === active.name ? "*" : " "} ${t.name} — ${members}`;

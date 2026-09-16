@@ -242,6 +242,12 @@ test("formatTeamList: member with no agent file shows (no agent file)", () => {
 	expect(out).toBe("* default — ghost (no agent file), builder (read)");
 });
 
+test("formatTeamList: persona with empty tools shows (no tools)", () => {
+	const teams = new Map([["default", { name: "default", description: "d", members: ["blank"] }]]);
+	const out = formatTeamList(teams, teams.get("default")!, [agentDef("blank", [])]);
+	expect(out).toBe("* default — blank (no tools)");
+});
+
 test("default export registers the agents command", () => {
 	const commands: Record<string, { description: string; handler: Function }> = {};
 	agentsView({ registerCommand: (n: string, d: { description: string; handler: Function }) => { commands[n] = d; } } as never);

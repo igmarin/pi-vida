@@ -150,13 +150,19 @@ function teamCwd(yaml = TEAM_YAML): string {
 	return cwd;
 }
 
-/** Point MY_PI_AGENT_HOME at the fixture so repo agents never leak in. */
+/** Point MY_PI_AGENT_HOME and HOME at the fixture so neither the repo's
+ * profiles/agents nor the machine's ~/.claude/.gemini/.codex personas leak
+ * into discovery (bun's os.homedir() reads $HOME). */
 function isolateHarness(cwd: string): () => void {
-	const prev = process.env.MY_PI_AGENT_HOME;
+	const prevRoot = process.env.MY_PI_AGENT_HOME;
+	const prevHome = process.env.HOME;
 	process.env.MY_PI_AGENT_HOME = cwd;
+	process.env.HOME = cwd;
 	return () => {
-		if (prev === undefined) delete process.env.MY_PI_AGENT_HOME;
-		else process.env.MY_PI_AGENT_HOME = prev;
+		if (prevRoot === undefined) delete process.env.MY_PI_AGENT_HOME;
+		else process.env.MY_PI_AGENT_HOME = prevRoot;
+		if (prevHome === undefined) delete process.env.HOME;
+		else process.env.HOME = prevHome;
 	};
 }
 
