@@ -1,7 +1,7 @@
 # pi-vida how-to
 
 Task-oriented guide: install, launch, configure, run chains and teams, troubleshoot.
-Domain terms are in [CONTEXT.md](../CONTEXT.md); project rules in [AGENTS.md](../AGENTS.md).
+Domain terms are in [CONTEXT.md](../CONTEXT.md); project rules in [AGENTS.md](../AGENTS.md). Proposed host-aware launch (Pi, Cline, Kilo, Claude Code): [host-aware-vida/design.md](host-aware-vida/design.md).
 
 ## Install
 
