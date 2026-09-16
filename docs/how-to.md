@@ -1,7 +1,7 @@
 # pi-vida how-to
 
 Task-oriented guide: install, launch, configure, run chains and teams, troubleshoot.
-Domain terms are in [CONTEXT.md](../CONTEXT.md); project rules in [AGENTS.md](../AGENTS.md). Proposed host-aware launch (Pi, Cline, Kilo, Claude Code): [host-aware-vida/design.md](host-aware-vida/design.md).
+Domain terms are in [CONTEXT.md](../CONTEXT.md); project rules in [AGENTS.md](../AGENTS.md). Host-aware launch contract (Pi, Cline, Kilo, Claude Code): [host-aware-vida/design.md](host-aware-vida/design.md).
 
 ## Install
 
@@ -48,6 +48,8 @@ Second launch with a saved overlay: no TUI. The overlay's `models.solo`/`thinkin
 
 ## Daily driver: vidas and modes
 
+A **vida** is a persona profile — one language identity (`ruby`, `rust`, `python`, `elixir`) with its skills, safety gate, and tracker ([CONTEXT.md](../CONTEXT.md)).
+
 ```sh
 pi-vida ruby solo     # full toolset + footer status line (default)
 pi-vida ruby chain    # + /chain, /chain-list, run_chain tool
@@ -61,6 +63,19 @@ pi-vida --dry-run ruby  # print the pi argv, launch nothing
 Aliases: `rails` → `ruby`, `phoenix` → `elixir`. `ecto` and `rails-python` are not vidas (exit 2).
 
 Mode exclusivity is structural: solo loads the status line, chain loads the chain extension, team loads the dispatcher, fusion loads the vendored multi-model extension — never more than one of them.
+
+### Use with Cline or Kilo
+
+No Pi required. From the target repo (needs the built Rust launcher: `just build`):
+
+```sh
+pi-vida ruby --host cline           # project ruby skills into ~/.agents/skills (Cline's global dir), then run cline
+pi-vida ruby --host kilo            # project into ~/.kilo/skills, then run kilo
+pi-vida ruby --host claude          # project into ~/.claude/skills, then run claude
+pi-vida --dry-run ruby --host kilo  # preview: projected paths + start hint, writes nothing
+```
+
+What `--host <name>` does: installs missing allowlisted skills from `packs.yaml` into the skills home (`~/.agents/skills` unless `PI_SKILLS_HOME` is set), symlinks each resolved skill dir into the host's folder (never overwriting a non-symlink dir), projects personas as markdown for Kilo (`~/.config/kilo/agent` and `agents`) and Claude (`~/.claude/agents`) — none for Cline — then execs the host or prints a start hint. Chain, team, and fusion modes are Pi-only: `--host kilo team` exits 2.
 
 ### Inspect what will run
 
@@ -236,6 +251,7 @@ Herdr hosts parallel vidas: `herdr agent start reviewer --kind pi -- pi-vida rub
 | `401: incorrect_api_key` when the agent speaks | the configured pi model's key is wrong or absent | `/model` to a working provider, or fix the key in pi's config |
 | write prompt missing on first boot | no UI (print/JSON mode) | boot TUI needs a terminal; run interactively once |
 | child `pi` still running after Escape / Ctrl+C / `/exit` | parent waited on a child that ignored SIGTERM, or a bash descendant was outside the process group | wait 5s for SIGKILL; leftover processes after that are a bug. Wall-clock kill is `PI_CHILD_TIMEOUT_MS` (default 15 minutes) |
+| team dispatch hangs waiting on a member | the member (or hidden child) never answers; dispatch waits on `--wait`/join until the wall-clock timeout | interrupt the dispatch or wait it out; tune `PI_CHILD_TIMEOUT_MS` (default 900000 = 15 minutes) — it bounds chain/team/subagent children and Herdr `agent prompt --wait` |
 
 ## Environment variables
 
