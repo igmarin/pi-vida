@@ -145,9 +145,10 @@ if (import.meta.main) {
 		console.error("usage: bun extensions/agents-view.ts <cwd> [vida]");
 		process.exit(2);
 	}
-	const v = resolvedAgentsView(cwd, vida || process.env.PI_VIDA || process.env.PI_LIFE);
-	if (vida && !v.vida) {
-		console.error(`agents-view: unknown vida ${vida}`);
+	const requestedVida = vida || process.env.PI_VIDA || process.env.PI_LIFE;
+	const v = resolvedAgentsView(cwd, requestedVida);
+	if (requestedVida && !v.vida) {
+		console.error(`agents-view: unknown vida ${requestedVida}`);
 		process.exit(2);
 	}
 	console.log(formatAgentsView(v));
