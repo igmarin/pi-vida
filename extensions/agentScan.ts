@@ -47,7 +47,7 @@ export function canonicalLife(raw: string | undefined): string | undefined {
  * all consume this one implementation so the view cannot disagree with
  * discovery. */
 export function harnessRoot(extFileUrl = import.meta.url): string {
-	return process.env.PI_VIDA_HOME || process.env.PI_LIFE_HOME || process.env.MY_PI_AGENT_HOME || resolve(dirname(fileURLToPath(extFileUrl)), "..");
+	return resolve(process.env.PI_VIDA_HOME || process.env.PI_LIFE_HOME || process.env.MY_PI_AGENT_HOME || join(dirname(fileURLToPath(extFileUrl)), ".."));
 }
 
 function str(v: unknown): string {
