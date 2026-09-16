@@ -66,7 +66,7 @@ Mode exclusivity is structural: solo loads the status line, chain loads the chai
 
 ### Use with Cline or Kilo
 
-No Pi required. From the target repo (needs the built Rust launcher: `just build`):
+No Pi required. From the target repo (needs the built Rust launcher: `just build`). Flags may appear before or after the vida — `pi-vida --host kilo ruby` is the same command.
 
 ```sh
 pi-vida ruby --host cline           # project ruby skills into ~/.agents/skills (Cline's global dir), then run cline
@@ -251,7 +251,7 @@ Herdr hosts parallel vidas: `herdr agent start reviewer --kind pi -- pi-vida rub
 | `401: incorrect_api_key` when the agent speaks | the configured pi model's key is wrong or absent | `/model` to a working provider, or fix the key in pi's config |
 | write prompt missing on first boot | no UI (print/JSON mode) | boot TUI needs a terminal; run interactively once |
 | child `pi` still running after Escape / Ctrl+C / `/exit` | parent waited on a child that ignored SIGTERM, or a bash descendant was outside the process group | wait 5s for SIGKILL; leftover processes after that are a bug. Wall-clock kill is `PI_CHILD_TIMEOUT_MS` (default 15 minutes) |
-| team dispatch hangs waiting on a member | the member (or hidden child) never answers; dispatch waits on `--wait`/join until the wall-clock timeout | interrupt the dispatch or wait it out; tune `PI_CHILD_TIMEOUT_MS` (default 900000 = 15 minutes) — it bounds chain/team/subagent children and Herdr `agent prompt --wait` |
+| team dispatch hangs waiting on a member | the member (or hidden child) never answers; dispatch waits on `--wait`/join until the wall-clock timeout | interrupt the dispatch or wait it out — the same `PI_CHILD_TIMEOUT_MS` wall clock (default 15 min) also bounds Herdr `agent prompt --wait` |
 
 ## Environment variables
 

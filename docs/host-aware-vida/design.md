@@ -1,6 +1,6 @@
 # Host-aware vida
 
-> **Status:** Proposed for review
+> **Status:** Shipped — implemented by #82 (the gum/Rust launcher in `crates/pi-vida`). This document remains the binding product contract for host-aware launch.
 
 This is the product contract for the gum/Rust launcher (issue #82). The repo, binary, and profile glossary were renamed to `pi-vida`/`vida` in #75; this document uses those names throughout.
 
