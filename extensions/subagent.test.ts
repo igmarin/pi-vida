@@ -692,6 +692,7 @@ const dummyAgent = {
 	tools: [] as string[],
 	body: "",
 	source: "test",
+	path: "test/builder.yaml",
 };
 
 function spawnOpts(over: Partial<RunOpts> = {}): RunOpts {

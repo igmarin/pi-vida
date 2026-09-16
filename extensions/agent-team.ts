@@ -34,13 +34,12 @@ import {
 	resolveChainFile,
 	type TeamDef,
 } from "./agent-chain.ts";
-import { collectAgents } from "./agentScan.ts";
+import { collectAgents, harnessRoot } from "./agentScan.ts";
 import {
 	aggregateUsage,
 	formatUsageStats,
 	getFinalOutput,
 	isFailedResult,
-	resolveHarnessRoot,
 	resultOutput,
 	runSingleAgent,
 	drainInflight,
@@ -154,7 +153,7 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			const agents = collectAgents(ctx.cwd, import.meta.url);
-			const harnessRoot = resolveHarnessRoot();
+			const childRoot = harnessRoot();
 			const dispatchModel = ctx.model
 				? `${ctx.model.provider}/${ctx.model.id}`
 				: undefined;
@@ -165,7 +164,7 @@ export default function (pi: ExtensionAPI) {
 				signal,
 				shutdown: shutdown.signal,
 				defaultCwd: ctx.cwd,
-				harnessRoot,
+				harnessRoot: childRoot,
 				dispatchModel,
 				dispatchThinkingLevel: ctx.thinkingLevel as string | undefined,
 			});

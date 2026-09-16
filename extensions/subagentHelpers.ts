@@ -12,7 +12,6 @@ import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { fileURLToPath } from "node:url";
 import { overlayFromEnv } from "./capabilities.ts";
 import type { AgentDef } from "./agentScan.ts";
 
@@ -227,13 +226,6 @@ export function buildChildArgv(harnessRoot: string, opts: BuildChildArgvOptions)
 	}
 	argv.push(`Task: ${opts.task}`);
 	return argv;
-}
-
-export function resolveHarnessRoot(): string {
-	if (process.env.PI_VIDA_HOME) return process.env.PI_VIDA_HOME;
-	if (process.env.PI_LIFE_HOME) return process.env.PI_LIFE_HOME;
-	if (process.env.MY_PI_AGENT_HOME) return process.env.MY_PI_AGENT_HOME;
-	return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 }
 
 async function writePromptFile(

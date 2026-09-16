@@ -42,7 +42,7 @@ Default launch mode. The single primary Pi session with the full per-vida toolse
 _Avoid_: single, default (ambiguous; "solo" names the harness mode specifically)
 
 **Agent (persona)**:
-YAML under `profiles/<vida>/agents/` or shared `profiles/agents/`, then cwd `.pi/agents/`, then `.claude/.gemini/.codex` (cwd then home). First name wins. `cross-agent` registers `/name` and `/skill:name`. `system-select` `/system` prepends the chosen body. Not passed by `pi-vida` yet.
+YAML under `profiles/<vida>/agents/` or shared `profiles/agents/`, then cwd `.pi/agents/`, then `.claude/.gemini/.codex` (cwd then home). First name wins. `cross-agent` registers `/name` and `/skill:name`. `system-select` `/system` prepends the chosen body. Not passed by `pi-vida` yet. `pi-vida agents <vida>` prints the resolved view (winner, shadows, tools, model, team, both discovery orders) via `resolvedAgentsView` in `extensions/agents-view.ts` (issue #81; the in-session `/agents` command builds on it, #77).
 _Avoid_: flattening pack playbooks into these files
 
 **Project overlay**:
@@ -78,7 +78,7 @@ Chain/team seat a model or thinking level can be assigned to: `solo` (primary se
 _Avoid_: agent (a role is a seat, an agent is a persona file)
 
 **Chain**:
-Sequential roles (`plan → build → review`) driven by named chains from `agent-chain.yaml` (`/chain`, `/chain-list`, `run_chain`). File precedence: project `.pi/agents/agent-chain.yaml` overrides harness `profiles/<vida>/agents/` then shared `profiles/agents/agent-chain.yaml` (default `plan-build-review`; optional `research-plan-build-review` prepends a researcher step, issue #12). Each step is a child `pi` (`{task}`/`{previous}` templates, fail-fast). A step may set `rs_guard: true` (issue #7, chain-level): when the overlay enables `rs-guard`, the chain shells out to `rs-guard --diff-file` on `git diff HEAD` before the agent runs and feeds the findings into the step; overlay off or empty diff = skills-only; overlay on + missing binary or a non-zero rs-guard exit fails the chain closed. Launched via `pi-vida <vida> chain`, which loads the chain extension on top of the solo allowlist (#8).
+Sequential roles (`plan → build → review`) driven by named chains from `agent-chain.yaml` (`/chain`, `/chain-list`, `run_chain`). File precedence: project `.pi/agents/agent-chain.yaml` overrides harness `profiles/<vida>/agents/` then shared `profiles/agents/agent-chain.yaml` (default `plan-build-review`; optional `research-plan-build-review` prepends a researcher step, issue #12). Each step is a child `pi` (`{task}`/`{previous}` templates, fail-fast). A step may set `rs_guard: true` (issue #7, chain-level): when the overlay enables `rs-guard`, the chain shells out to `rs-guard --diff-file` on `git diff HEAD` before the agent runs and feeds the findings into the step; overlay off or empty diff = skills-only; overlay on + missing binary or a non-zero rs-guard exit fails the chain closed. Launched via `pi-vida <vida> chain`, which loads the chain extension on top of the solo allowlist (#8). `pi-vida agents <vida>` shows which chain file won (`chainCandidates` in `extensions/agent-chain.ts`, shared with `resolvedAgentsView`, issue #81).
 _Avoid_: pipeline, workflow (those include overnight/unattended systems)
 
 **Subagent**:

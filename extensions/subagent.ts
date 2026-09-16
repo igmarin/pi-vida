@@ -38,7 +38,7 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { collectAgents } from "./agentScan.ts";
+import { collectAgents, harnessRoot } from "./agentScan.ts";
 import {
 	MAX_PARALLEL_TASKS,
 	MAX_CONCURRENCY,
@@ -49,7 +49,6 @@ import {
 	getFinalOutput,
 	isFailedResult,
 	mapWithConcurrencyLimit,
-	resolveHarnessRoot,
 	resultOutput,
 	runSingleAgent,
 	truncateAggregate,
@@ -97,7 +96,7 @@ export default function (pi: ExtensionAPI) {
 
 		async execute(_id, params, signal, _onUpdate, ctx) {
 			const agents = collectAgents(ctx.cwd, import.meta.url);
-			const harnessRoot = resolveHarnessRoot();
+			const childRoot = harnessRoot();
 			const dispatchModel = ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : undefined;
 			const dispatchThinkingLevel = ctx.thinkingLevel as string | undefined;
 
@@ -133,7 +132,7 @@ export default function (pi: ExtensionAPI) {
 					step,
 					signal,
 					defaultCwd: ctx.cwd,
-					harnessRoot,
+					harnessRoot: childRoot,
 					dispatchModel,
 					dispatchThinkingLevel,
 				});
