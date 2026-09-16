@@ -9,10 +9,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { type AgentDef, agentSources, canonicalLife, discover } from "./agentScan.ts";
+import { type AgentDef, agentSources, canonicalLife, discover, harnessRoot } from "./agentScan.ts";
 import { chainCandidates, parseAgentTeams, pickTeam } from "./agent-chain.ts";
 import { overlayFromEnv } from "./capabilities.ts";
-import { resolveHarnessRoot } from "./subagentHelpers.ts";
 
 export interface ResolvedAgentsView {
 	cwd: string;
@@ -40,7 +39,7 @@ export function resolvedAgentsView(
 	extFileUrl = import.meta.url,
 	home = homedir(),
 ): ResolvedAgentsView {
-	const root = resolveHarnessRoot(extFileUrl);
+	const root = harnessRoot(extFileUrl);
 	const view: ResolvedAgentsView = {
 		cwd,
 		harnessRoot: root,
@@ -71,7 +70,7 @@ export function resolvedAgentsView(
 		view.chainFile = { source: chainFile.source, path: chainFile.path };
 		const teams = parseAgentTeams(readFileSync(chainFile.path, "utf-8"));
 		if (teams.size > 0) {
-			const wanted = process.env.PI_TEAM?.trim();
+			const wanted = process.env.PI_TEAM?.trim() || undefined;
 			// An unknown PI_TEAM throws in pickTeam (agent-team.ts fails the
 			// session); the inspector degrades to team: none instead.
 			try {

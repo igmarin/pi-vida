@@ -717,6 +717,12 @@ smoke:
     agents_bad="$(cd "${agents_cwd}" && MY_PI_AGENT_HOME="{{root}}" PI_SKILLS_HOME="${tmp}" "${bin}" agents nosuch 2>&1)" || status=$?
     test "${status}" -eq 2
     grep -q 'unknown vida nosuch' <<<"${agents_bad}"
+    # Alias rejection (canonical_life exit-2 branch): same messages as launch.
+    status=0
+    agents_bad="$(cd "${agents_cwd}" && MY_PI_AGENT_HOME="{{root}}" PI_SKILLS_HOME="${tmp}" "${bin}" agents rails-python 2>&1)" || status=$?
+    test "${status}" -eq 2
+    grep -q 'not a vida' <<<"${agents_bad}"
+    grep -q 'use ruby or python' <<<"${agents_bad}"
     rm -rf "${agents_cwd}"
     bun test "{{root}}/extensions/agentScan.test.ts" "{{root}}/extensions/capabilities.test.ts" "{{root}}/extensions/boot-config.test.ts" "{{root}}/extensions/clarify-gate.test.ts" "{{root}}/extensions/agent-chain.test.ts" "{{root}}/extensions/agent-team.test.ts" "{{root}}/extensions/subagent.test.ts" "{{root}}/extensions/agents-view.test.ts" "{{root}}/extensions/installed-skills.test.ts" "{{root}}/extensions/fusion-harness/tests" "{{root}}/scripts/skills-bootstrap.test.ts"
     bun build "{{root}}/extensions/themeMap.ts" "{{root}}/extensions/minimal.ts" "{{root}}/extensions/purpose-gate.ts" \

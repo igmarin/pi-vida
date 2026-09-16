@@ -41,8 +41,13 @@ export function canonicalLife(raw: string | undefined): string | undefined {
 	return undefined;
 }
 
-function harnessRoot(extFileUrl: string): string {
-	return process.env.PI_VIDA_HOME || process.env.PI_LIFE_HOME || process.env.MY_PI_AGENT_HOME || join(dirname(fileURLToPath(extFileUrl)), "..");
+/** Single harness-root resolver (issue #81 re-review): PI_VIDA_HOME, else
+ * PI_LIFE_HOME, else MY_PI_AGENT_HOME, else the dir containing extFileUrl.
+ * discover, agentSources, agent-chain's harnessChainPath, and agents-view
+ * all consume this one implementation so the view cannot disagree with
+ * discovery. */
+export function harnessRoot(extFileUrl = import.meta.url): string {
+	return process.env.PI_VIDA_HOME || process.env.PI_LIFE_HOME || process.env.MY_PI_AGENT_HOME || resolve(dirname(fileURLToPath(extFileUrl)), "..");
 }
 
 function str(v: unknown): string {

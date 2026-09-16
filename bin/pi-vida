@@ -465,11 +465,11 @@ collect_launch_args() {
   # must exist; the extension itself validates slots, auth, and provider
   # visibility at startup. Modes are exclusive by construction.
   if [[ "${mode}" == "fusion" ]]; then
-    if [[ ! -f "${fusion_stack_used}" ]]; then
-      printf 'pi-vida: fusion stack not found: %s\n' "${fusion_stack_used}" >&2
+    if [[ ! -f "${fusion_stack_used:-}" ]]; then
+      printf 'pi-vida: fusion stack not found: %s\n' "${fusion_stack_used:-}" >&2
       exit 2
     fi
-    pi_args+=(-e "${root}/extensions/fusion-harness/fusion-harness.ts" --fh-config "${fusion_stack_used}")
+    pi_args+=(-e "${root}/extensions/fusion-harness/fusion-harness.ts" --fh-config "${fusion_stack_used:-}")
   fi
 
   local rows

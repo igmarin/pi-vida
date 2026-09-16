@@ -66,7 +66,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { parse as yamlParse } from "yaml";
-import { type AgentDef, collectAgents } from "./agentScan.ts";
+import { type AgentDef, collectAgents, harnessRoot } from "./agentScan.ts";
 import { deserializeOverlayEnv } from "./capabilities.ts";
 import {
 	getFinalOutput,
@@ -268,11 +268,7 @@ function harnessChainPath(
 	extFileUrl: string,
 	lifeRaw: string | null,
 ): { source: string; path: string }[] {
-	const root =
-		process.env.PI_VIDA_HOME ||
-		process.env.PI_LIFE_HOME ||
-		process.env.MY_PI_AGENT_HOME ||
-		join(dirname(fileURLToPath(extFileUrl)), "..");
+	const root = harnessRoot(extFileUrl);
 	const life = chainLife(lifeRaw || undefined);
 	const out: { source: string; path: string }[] = [];
 	if (life)
