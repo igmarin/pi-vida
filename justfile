@@ -16,6 +16,10 @@ install:
     ln -sfn "{{root}}/bin/pi-life" "${HOME}/.local/bin/pi-life"
     echo "pi-vida -> {{root}}/bin/pi-vida"
 
+# Build the Rust launcher (bin/pi-vida prefers it once present)
+build:
+    cargo build --release --manifest-path "{{root}}/crates/pi-vida/Cargo.toml"
+
 # Provision PI_SKILLS_HOME from packs.yaml: clone pack/skill repos, symlink
 # skills into ~/.agents/skills, write .dotskills-manifest.json. Idempotent.
 skills:
