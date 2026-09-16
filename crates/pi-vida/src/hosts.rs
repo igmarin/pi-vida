@@ -85,15 +85,14 @@ pub fn project_into(dest_dir: &Path, sources: &[PathBuf]) -> Vec<String> {
         let dest = dest_dir.join(name);
         match std::fs::symlink_metadata(&dest) {
             Ok(md) if md.is_symlink() => {
-                if std::fs::read_link(&dest).is_ok_and(|t| t != *src) {
-                    if std::fs::remove_file(&dest).is_err()
-                        || std::os::unix::fs::symlink(src, &dest).is_err()
-                    {
-                        warnings.push(format!(
-                            "pi-vida: warning: cannot relink {}",
-                            dest.display()
-                        ));
-                    }
+                if std::fs::read_link(&dest).is_ok_and(|t| t != *src)
+                    && (std::fs::remove_file(&dest).is_err()
+                        || std::os::unix::fs::symlink(src, &dest).is_err())
+                {
+                    warnings.push(format!(
+                        "pi-vida: warning: cannot relink {}",
+                        dest.display()
+                    ));
                 }
             }
             Ok(_) => warnings.push(format!(

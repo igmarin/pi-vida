@@ -70,7 +70,7 @@ pub fn parse_profile(text: &str) -> Result<Profile, String> {
             }
         }
     }
-    let tracker = tracker.into_iter().filter(|t| t != "none").next();
+    let tracker = tracker.into_iter().find(|t| t != "none");
     Ok(Profile {
         mantra,
         packs,

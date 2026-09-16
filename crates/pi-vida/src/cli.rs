@@ -70,9 +70,7 @@ pub fn skills_home(home: &Path) -> PathBuf {
 }
 
 fn warn_all(messages: &[String]) {
-    for m in messages {
-        eprintln!("{m}");
-    }
+    warn_iter(messages.iter());
 }
 
 fn warn_iter<'a>(messages: impl Iterator<Item = &'a String>) {
@@ -80,9 +78,6 @@ fn warn_iter<'a>(messages: impl Iterator<Item = &'a String>) {
         eprintln!("{m}");
     }
 }
-
-/// Install gaps via the existing bootstrap (INV-7): bun
-/// scripts/skills-bootstrap.ts --allowlist <names...>. Returns false when
 
 /// Load + parse the vida profile, exiting 2 on failure.
 fn load_profile(root: &Path, vida: &str) -> Profile {
