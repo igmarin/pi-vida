@@ -229,7 +229,11 @@ async function main(): Promise<void> {
 	const allowlist =
 		allowIdx === -1
 			? undefined
-			: process.argv.slice(allowIdx + 1).filter((a) => a !== "--");
+			: (() => {
+					const tail = process.argv.slice(allowIdx + 1);
+					const stop = tail.findIndex((a) => a.startsWith("-"));
+					return (stop === -1 ? tail : tail.slice(0, stop)).filter((a) => a !== "--");
+				})();
 	if (allowlist && allowlist.length === 0) {
 		console.error("skills-bootstrap: --allowlist requires at least one name");
 		process.exit(2);

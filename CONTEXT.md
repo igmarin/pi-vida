@@ -104,3 +104,7 @@ _Avoid_: multiplexer-as-host confusion (Herdr hosts Pi vidas; Pi is the agent)
 ## Config format
 
 Harness-authored files (profiles, overlay, chains, damage-control rules) are **YAML**. The harness already depends on `yaml` (npm) for damage-control rules. One format, one dependency. Do not add TOML for those files.
+
+## Rust launcher (issue #82)
+
+`bin/pi-vida` is a wrapper: it execs `crates/pi-vida/target/release/pi-vida` (the Rust launcher, built with `just build`) when that binary exists, else `libexec/pi-vida-launch` (the bash launcher). The Rust binary handles only the interactive gum flow (TTY, no args — host/vida/menus per `docs/host-aware-vida/design.md`) and the non-Pi `--host cline|kilo|claude` path (install via `bun scripts/skills-bootstrap.ts --allowlist <names>`, project skills + personas, exec or print). Every Pi invocation — launch, `--dry-run`, `doctor`, `doctor-probe`, `agents`, `--dump-overlay` — delegates to the bash launcher, so the INV-skills argv and overlay handling stay in one place. Build artifacts (`crates/pi-vida/target/`) are gitignored; `just smoke` guards its Rust-specific checks on `command -v cargo`.
