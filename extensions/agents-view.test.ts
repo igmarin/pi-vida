@@ -98,6 +98,14 @@ test("PI_TEAM selects the active team", () => {
 	expect(out).toContain("members: builder");
 });
 
+test("unknown PI_TEAM degrades to team: none", () => {
+	seed();
+	process.env.PI_TEAM = "nope";
+	const v = resolvedAgentsView(cwd, "ruby", import.meta.url, home);
+	expect(v.team).toBeNull();
+	expect(formatAgentsView(v)).toContain("team: none");
+});
+
 test("missing chain file: team none and chain-file none", () => {
 	seed();
 	rmSync(join(harness, "profiles/agents/agent-chain.yaml"));
@@ -119,6 +127,31 @@ test("invalid vida fails closed: empty discovery", () => {
 	expect(v.team).toBeNull();
 	expect(v.chainOrder).toEqual([]);
 	expect(v.agentOrder).toEqual([]);
+});
+
+test("case-differing shadow still prints under its winner", () => {
+	seed();
+	writeFileSync(
+		join(cwd, ".pi/agents/Builder.yaml"),
+		"name: Builder\ndescription: project\nbody: |\n  PROJECT\n",
+	);
+	const v = resolvedAgentsView(cwd, "ruby", import.meta.url, home);
+	expect(v.shadowed.map((s) => s.name)).toContain("Builder");
+	const out = formatAgentsView(v);
+	expect(out).toContain(`  shadows: ${join(cwd, ".pi/agents/Builder.yaml")}`);
+});
+
+test("relative cwd yields absolute agent paths and starred order", () => {
+	seed();
+	const prevCwd = process.cwd();
+	process.chdir(cwd);
+	try {
+		const v = resolvedAgentsView(".", "ruby", import.meta.url, home);
+		expect(v.agents[0].path).toBe(join(harness, "profiles/ruby/agents/planner.yaml"));
+		expect(v.agentOrder[0]).toBe("*profiles/ruby/agents");
+	} finally {
+		process.chdir(prevCwd);
+	}
 });
 
 test("formatter snapshot with overlay model/thinking", () => {

@@ -5,7 +5,7 @@
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
@@ -212,21 +212,26 @@ export function agentSources(
 	cwd: string,
 	home: string,
 ): { source: string; agents: string; commands?: string; skills?: string }[] {
+	// Normalize the bases so AgentDef.path is absolute even when a caller
+	// passes a relative cwd/root (or an env override holds a relative path).
+	const rootDir = resolve(root);
+	const cwdDir = resolve(cwd);
+	const homeDir = resolve(home);
 	const lives = life ? [life] : [...LIVES];
 	const specs: { source: string; agents: string; commands?: string; skills?: string }[] =
 		lives.map((l) => ({
 			source: `profiles/${l}/agents`,
-			agents: join(root, "profiles", l, "agents"),
+			agents: join(rootDir, "profiles", l, "agents"),
 		}));
-	specs.push({ source: "profiles/agents", agents: join(root, "profiles", "agents") });
+	specs.push({ source: "profiles/agents", agents: join(rootDir, "profiles", "agents") });
 	specs.push({
 		source: ".pi/agents",
-		commands: join(cwd, ".pi", "commands"),
-		skills: join(cwd, ".pi", "skills"),
-		agents: join(cwd, ".pi", "agents"),
+		commands: join(cwdDir, ".pi", "commands"),
+		skills: join(cwdDir, ".pi", "skills"),
+		agents: join(cwdDir, ".pi", "agents"),
 	});
 	for (const p of PROVIDERS) {
-		const dir = join(cwd, `.${p}`);
+		const dir = join(cwdDir, `.${p}`);
 		specs.push({
 			source: `.${p}`,
 			commands: join(dir, "commands"),
@@ -235,7 +240,7 @@ export function agentSources(
 		});
 	}
 	for (const p of PROVIDERS) {
-		const dir = join(home, `.${p}`);
+		const dir = join(homeDir, `.${p}`);
 		specs.push({
 			source: `~/.${p}`,
 			commands: join(dir, "commands"),

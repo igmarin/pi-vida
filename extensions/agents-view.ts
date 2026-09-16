@@ -54,7 +54,7 @@ export function resolvedAgentsView(
 	};
 	if (vida && !view.vida) return view;
 
-	const groups = discover(cwd, extFileUrl, home, vida);
+	const groups = discover(cwd, extFileUrl, home, view.vida);
 	for (const g of groups) view.agents.push(...g.agents);
 	// A shadowed entry always lost first-wins to a winner in an earlier
 	// group; shadowedBy is that winner's exact name (files may differ in case).
@@ -72,8 +72,16 @@ export function resolvedAgentsView(
 		const teams = parseAgentTeams(readFileSync(chainFile.path, "utf-8"));
 		if (teams.size > 0) {
 			const wanted = process.env.PI_TEAM?.trim();
-			const team = pickTeam(teams, wanted);
-			view.team = { name: team.name, members: [...team.members], via: wanted ? "PI_TEAM" : "default" };
+			// An unknown PI_TEAM throws in pickTeam (agent-team.ts fails the
+			// session); the inspector degrades to team: none instead.
+			try {
+				const team = pickTeam(teams, wanted);
+				// PI_TEAM names the active team only when it actually won.
+				const via = wanted && team.name === wanted ? "PI_TEAM" : "default";
+				view.team = { name: team.name, members: [...team.members], via };
+			} catch {
+				view.team = null;
+			}
 		}
 	}
 	view.agentOrder = agentSources(root, view.vida, cwd, home).map((s) =>
@@ -110,7 +118,7 @@ export function formatAgentsView(v: ResolvedAgentsView): string {
 		lines.push(`  tools: ${a.tools.join(", ")}`);
 		lines.push(`  model: ${overlay?.models?.[a.name] ?? "inherit"}`);
 		lines.push(`  thinking: ${overlay?.thinking?.[a.name] ?? "inherit"}`);
-		for (const s of v.shadowed.filter((s) => s.name === a.name)) {
+		for (const s of v.shadowed.filter((s) => s.shadowedBy === a.name)) {
 			lines.push(`  shadows: ${s.path}`);
 		}
 	}

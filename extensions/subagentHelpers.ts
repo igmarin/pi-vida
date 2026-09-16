@@ -229,11 +229,11 @@ export function buildChildArgv(harnessRoot: string, opts: BuildChildArgvOptions)
 	return argv;
 }
 
-export function resolveHarnessRoot(): string {
+export function resolveHarnessRoot(extFileUrl = import.meta.url): string {
 	if (process.env.PI_VIDA_HOME) return process.env.PI_VIDA_HOME;
 	if (process.env.PI_LIFE_HOME) return process.env.PI_LIFE_HOME;
 	if (process.env.MY_PI_AGENT_HOME) return process.env.MY_PI_AGENT_HOME;
-	return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+	return path.resolve(path.dirname(fileURLToPath(extFileUrl)), "..");
 }
 
 async function writePromptFile(
