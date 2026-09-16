@@ -1,17 +1,18 @@
 # pi-vida
 
-`pi-vida` launches the [Pi](https://github.com/earendil-works/pi) coding agent inside **your** repo with the skills, safety gate, and ticket tracker for the language you're working in:
+`pi-vida` launches a **vida** (a persona profile — skills, safety gate, and ticket tracker for one language: `ruby`, `rust`, `python`, `elixir`) inside **your** repo, on the coding agent host you already use:
 
 ```sh
 cd path/to/your/repo
-pi-vida ruby          # Rails app: Ruby skill packs + GitHub issue tracker
-pi-vida rust          # Rust crate
-pi-vida python        # pandas / FastAPI
-pi-vida elixir        # Elixir/Phoenix (no ticket tracker configured)
+pi-vida ruby               # Pi: Ruby skill packs + GitHub issue tracker
+pi-vida ruby --host kilo   # Kilo: install + project the same skills, run kilo
+pi-vida                    # interactive host/vida menu — needs gum
 ```
 
-- **First time:** `npm i -g @earendil-works/pi-coding-agent`, then `just install` ([Install](#install)).
-- **Daily:** `pi-vida ruby chain` (plan → build → review), `pi-vida ruby team` (dispatch to specialists), `pi-vida doctor` (health check).
+- **No Pi? No problem:** `pi-vida --host cline|kilo|claude` installs the vida's skills and projects them into the host's folder (`~/.agents/skills`, `~/.kilo/skills`, `~/.claude/skills`), then execs the host or prints a start hint. Guide: [docs/how-to.md](docs/how-to.md#use-with-cline-or-kilo).
+- **Interactive:** no arguments on a terminal opens the host/vida/mode menu; needs [gum](https://github.com/charmbracelet/gum) (a missing gum exits 2 with an install hint). Without gum, run the Pi path directly (`pi-vida ruby`) or provision skills with `just skills`.
+- **Pi-only:** `pi-vida ruby chain` (plan → build → review), `pi-vida ruby team` (dispatch to specialists), `pi-vida doctor` (health check), fusion stacks.
+- **First time:** clone this repo, then `just install` + `just skills` ([Install](#install)); Pi hosts also need `npm i -g @earendil-works/pi-coding-agent`, non-Pi hosts also need `just build` (the Rust launcher).
 - Glossary: [CONTEXT.md](CONTEXT.md). Full guide: [docs/how-to.md](docs/how-to.md).
 
 ## Launch
@@ -57,7 +58,7 @@ Skills resolve to directories under `~/.agents/skills`. `just skills` clones the
 
 ## Herdr (host)
 
-Herdr is the host for parallel work: workspaces, panes, `herdr worktree`, and `herdr agent start --kind pi`. Herdr launches `pi-vida` itself; the harness never wraps Herdr in a Pi extension. Example: `herdr agent start reviewer --kind pi -- pi-vida ruby`. Inside Herdr, `pi-vida <vida> team` goes pane-native (INV-herdr, amends #19): the launcher splits one pane per team member (`herdr agent start <member> --kind pi -- pi-vida <vida> solo`) and `dispatch_agent` prompts members with `herdr agent prompt --wait` — only members the launcher started, only while `HERDR_ENV=1`. Outside Herdr team mode stays on hidden children + kill.
+Herdr is the host for parallel work: workspaces, panes, `herdr worktree`, and `herdr agent start --kind pi`. Herdr launches `pi-vida` itself; extensions never call `herdr` — the prompt-only team dispatch below is the one exception. Example: `herdr agent start reviewer --kind pi -- pi-vida ruby`. Inside Herdr, `pi-vida <vida> team` goes pane-native (INV-herdr, amends #19): the launcher splits one pane per team member (`herdr agent start <member> --kind pi -- pi-vida <vida> solo`) and `dispatch_agent` prompts members with `herdr agent prompt --wait` — only members the launcher started, only while `HERDR_ENV=1`. Outside Herdr team mode stays on hidden children + kill.
 
 The `herdr` skill is on the mantra allowlist of every vida. It no-ops unless `HERDR_ENV=1`, so a plain terminal is unaffected. `pi-vida doctor` warns (never fails) when `herdr` is not on PATH. Prefer `herdr worktree` when already inside Herdr; `stacked-pr-worktree-workflow` stays for gh-stack PR topology.
 
