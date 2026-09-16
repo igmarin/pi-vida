@@ -77,6 +77,21 @@ test("first-wins: harness, then .pi, then .claude cwd, then home", () => {
 	expect(cmds[0].description).toBe("do foo");
 });
 
+test("PI_VIDA wins over PI_LIFE", () => {
+	seed();
+	mkdirSync(join(harness, "profiles/python/agents"), { recursive: true });
+	writeFileSync(
+		join(harness, "profiles/python/agents/planner.yaml"),
+		"name: planner\ndescription: python\nbody: PYTHON\n",
+	);
+	process.env.PI_VIDA = "python";
+	const agents = collectAgents(cwd, import.meta.url, home);
+	const planner = agents.find((a) => a.name === "planner");
+	expect(planner?.source).toBe("profiles/python/agents");
+	expect(planner?.body).toBe("PYTHON");
+	expect(agents.some((a) => a.source === "profiles/ruby/agents")).toBe(false);
+});
+
 test("shared profiles/agents used when life dir is empty", () => {
 	mkdirSync(join(harness, "profiles/agents"), { recursive: true });
 	writeFileSync(

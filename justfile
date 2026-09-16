@@ -170,6 +170,18 @@ smoke:
     grep -q 'vida and life both set and differ' "${tmp}/conflict.err"
     rm -rf "${conflict}"
 
+    # Issue #84 review: PI_VIDA_HOME wins over MY_PI_AGENT_HOME (legacy fallback).
+    vidahome="$(mktemp -d)"
+    mkdir -p "${vidahome}/profiles" "${vidahome}/i-have-adhd"
+    printf '%s\n' '# i-have-adhd' >"${vidahome}/i-have-adhd/SKILL.md"
+    printf '%s\n' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' >"${vidahome}/profiles/python.yaml"
+    legacyhome="$(mktemp -d)"
+    mkdir -p "${legacyhome}/profiles"
+    printf '%s\n' 'models: solo' >"${legacyhome}/profiles/python.yaml"
+    vidahome_out="$(PI_VIDA_HOME="${vidahome}" MY_PI_AGENT_HOME="${legacyhome}" PI_SKILLS_HOME="${vidahome}" "${bin}" --dry-run python 2>"${tmp}/vidahome.err")"
+    echo "${vidahome_out}" | grep -q -- "--skill ${vidahome}/i-have-adhd"
+    rm -rf "${vidahome}" "${legacyhome}"
+
     bad="$(mktemp -d)"
     mkdir -p "${bad}/profiles"
     printf ':\n  [\n' >"${bad}/profiles/python.yaml"
