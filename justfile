@@ -98,6 +98,12 @@ smoke:
     ! grep -q -- "agent-chain.ts" <<<"${rust_team_out}"
     ! grep -q -- "agent-team.ts" <<<"${rust_chain_out}"
 
+    # Issue #77: the /agents command extension loads in every launch mode.
+    echo "${rust_out}" | grep -q -- "-e ${root}/extensions/agents-view.ts"
+    echo "${rust_solo_out}" | grep -q -- "-e ${root}/extensions/agents-view.ts"
+    echo "${rust_chain_out}" | grep -q -- "-e ${root}/extensions/agents-view.ts"
+    echo "${rust_team_out}" | grep -q -- "-e ${root}/extensions/agents-view.ts"
+
     # (p) fusion mode loads the vendored multi-model extension with an
     # explicit stack file; solo/team/chain argv never carry it.
     fusion_stack="${tmp}/model-stack-trio.yaml"
@@ -106,6 +112,8 @@ smoke:
     fusion_out="$("${bin}" --dry-run rust fusion "${fusion_stack}" 2>"${tmp}/fusion.err")"
     echo "${fusion_out}" | grep -q -- "-e ${root}/extensions/fusion-harness/fusion-harness.ts"
     echo "${fusion_out}" | grep -q -- "--fh-config ${fusion_stack}"
+    # Issue #77: fusion is built on collect_launch_args, so /agents is there too.
+    echo "${fusion_out}" | grep -q -- "-e ${root}/extensions/agents-view.ts"
     ! grep -q -- "fusion-harness.ts" <<<"${rust_solo_out}"
     ! grep -q -- "fusion-harness.ts" <<<"${rust_chain_out}"
     ! grep -q -- "fusion-harness.ts" <<<"${rust_team_out}"

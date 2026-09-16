@@ -16,7 +16,9 @@ import {
 	parseAgentTeams,
 	pickTeam,
 	resolveChainFile,
+	type TeamDef,
 } from "./agent-chain.ts";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { overlayFromEnv } from "./capabilities.ts";
 
 export interface ResolvedAgentsView {
@@ -138,7 +140,50 @@ export function formatAgentsView(v: ResolvedAgentsView): string {
 	return lines.join("\n");
 }
 
-/** CLI: `bun extensions/agents-view.ts <cwd> [vida]`. No default export — the in-session /agents command is #77. */
+/**
+ * Pure team formatter (#77): the active team starred first, remaining teams
+ * after in definition order. Each member shows its resolved tool list from
+ * the discovered personas — `(no agent file)` when the name has no persona.
+ * No fs access; the caller supplies the agent list.
+ */
+export function formatTeamList(
+	teams: Map<string, TeamDef>,
+	active: TeamDef,
+	agents: AgentDef[],
+): string {
+	const line = (t: TeamDef): string => {
+		const members = t.members
+			.map((m) => {
+				const a = agents.find((x) => x.name.toLowerCase() === m.toLowerCase());
+				return `${m} (${a ? (a.tools.length ? a.tools.join(",") : "no tools") : "no agent file"})`;
+			})
+			.join(", ");
+		return `${t.name === active.name ? "*" : " "} ${t.name} — ${members}`;
+	};
+	return [line(active), ...[...teams.values()].filter((t) => t.name !== active.name).map(line)].join("\n");
+}
+
+/** Issue #77: in-session `/agents`. Loaded by bin/pi-vida in every mode. */
+export default function (pi: ExtensionAPI) {
+	pi.registerCommand("agents", {
+		description: "/agents — resolved agents view: winners, tools, team, discovery orders",
+		handler: async (_args, ctx) => {
+			try {
+				const msg = formatAgentsView(
+					resolvedAgentsView(ctx.cwd, process.env.PI_VIDA || process.env.PI_LIFE),
+				);
+				if (ctx.hasUI) ctx.ui.notify(msg, "info");
+				else console.log(msg);
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : String(e);
+				if (ctx.hasUI) ctx.ui.notify(msg, "error");
+				else console.error(msg);
+			}
+		},
+	});
+}
+
+/** CLI: `bun extensions/agents-view.ts <cwd> [vida]`. */
 if (import.meta.main) {
 	const [cwd, vida] = process.argv.slice(2);
 	if (!cwd) {

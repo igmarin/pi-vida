@@ -145,26 +145,45 @@ function teamCwd(yaml = TEAM_YAML): string {
 	writeFileSync(join(cwd, ".pi", "agents", "agent-chain.yaml"), yaml);
 	writeFileSync(
 		join(cwd, ".pi", "agents", "builder.yaml"),
-		"name: builder\ndescription: test builder\nbody: |\n  test\n",
+		"name: builder\ndescription: test builder\ntools: read\nbody: |\n  test\n",
 	);
 	return cwd;
+}
+
+/** Point MY_PI_AGENT_HOME and HOME at the fixture so neither the repo's
+ * profiles/agents nor the machine's ~/.claude/.gemini/.codex personas leak
+ * into discovery (bun's os.homedir() reads $HOME). */
+function isolateHarness(cwd: string): () => void {
+	const prevRoot = process.env.MY_PI_AGENT_HOME;
+	const prevHome = process.env.HOME;
+	process.env.MY_PI_AGENT_HOME = cwd;
+	process.env.HOME = cwd;
+	return () => {
+		if (prevRoot === undefined) delete process.env.MY_PI_AGENT_HOME;
+		else process.env.MY_PI_AGENT_HOME = prevRoot;
+		if (prevHome === undefined) delete process.env.HOME;
+		else process.env.HOME = prevHome;
+	};
 }
 
 function loadTeam() {
 	const tools: Record<string, { execute: Function }> = {};
 	const events: Record<string, Function> = {};
+	const commands: Record<string, { description: string; handler: Function }> = {};
 	const pi = {
 		on(ev: string, h: Function) {
 			events[ev] = h;
 		},
-		registerCommand() {},
+		registerCommand(name: string, def: { description: string; handler: Function }) {
+			commands[name] = def;
+		},
 		registerTool(def: { name: string; execute: Function }) {
 			tools[def.name] = def;
 		},
 		setActiveTools() {},
 	};
 	teamExt(pi as never);
-	return { tools, events };
+	return { tools, events, commands };
 }
 
 function ctxOf(cwd: string) {
@@ -280,4 +299,81 @@ describe("agent-team dispatch", () => {
 			rmSync(cwd, { recursive: true, force: true });
 		}
 	}, 12_000);
+});
+
+describe("agent-team team-list and session_start notify (#77)", () => {
+	test("/team-list includes member tools and stars the active team", async () => {
+		const cwd = teamCwd();
+		const restore = isolateHarness(cwd);
+		try {
+			const { commands } = loadTeam();
+			const seen: { msg: string; level?: string }[] = [];
+			await commands["team-list"].handler("", {
+				cwd,
+				hasUI: true,
+				ui: { notify: (msg: string, level?: string) => seen.push({ msg, level }) },
+			});
+			expect(seen.length).toBe(1);
+			expect(seen[0].level).toBe("info");
+			expect(seen[0].msg).toContain("* default — planner (no agent file), builder (read), reviewer (no agent file), researcher (no agent file)");
+			expect(seen[0].msg).toContain("  fast — builder (read)");
+		} finally {
+			restore();
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	test("/team-list PI_TEAM override stars the selected team", async () => {
+		const cwd = teamCwd();
+		const restore = isolateHarness(cwd);
+		const prev = process.env.PI_TEAM;
+		process.env.PI_TEAM = "fast";
+		try {
+			const { commands } = loadTeam();
+			const seen: string[] = [];
+			await commands["team-list"].handler("", {
+				cwd,
+				hasUI: true,
+				ui: { notify: (msg: string) => seen.push(msg) },
+			});
+			expect(seen[0]).toContain("* fast — builder (read)");
+		} finally {
+			if (prev === undefined) delete process.env.PI_TEAM;
+			else process.env.PI_TEAM = prev;
+			restore();
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	test("session_start notifies active team and members when UI present", async () => {
+		const cwd = teamCwd();
+		const restore = isolateHarness(cwd);
+		try {
+			const { events } = loadTeam();
+			const seen: string[] = [];
+			await events.session_start(undefined, {
+				cwd,
+				hasUI: true,
+				ui: { notify: (msg: string) => seen.push(msg) },
+			});
+			expect(seen.length).toBe(1);
+			expect(seen[0]).toContain("Team default active — members with tools:");
+			expect(seen[0]).toContain("* default — planner (no agent file), builder (read)");
+		} finally {
+			restore();
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	test("session_start without UI is silent (print/JSON mode)", async () => {
+		const cwd = teamCwd();
+		try {
+			const { events } = loadTeam();
+			const seen: string[] = [];
+			await events.session_start(undefined, { cwd, hasUI: false });
+			expect(seen.length).toBe(0);
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
 });

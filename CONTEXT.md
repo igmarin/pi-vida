@@ -42,7 +42,7 @@ Default launch mode. The single primary Pi session with the full per-vida toolse
 _Avoid_: single, default (ambiguous; "solo" names the harness mode specifically)
 
 **Agent (persona)**:
-YAML under `profiles/<vida>/agents/` or shared `profiles/agents/`, then cwd `.pi/agents/`, then `.claude/.gemini/.codex` (cwd then home). First name wins. `cross-agent` registers `/name` and `/skill:name`. `system-select` `/system` prepends the chosen body. Not passed by `pi-vida` yet. `pi-vida agents <vida>` prints the resolved view (winner, shadows, tools, model, team, both discovery orders) via `resolvedAgentsView` in `extensions/agents-view.ts` (issue #81; the in-session `/agents` command builds on it, #77).
+YAML under `profiles/<vida>/agents/` or shared `profiles/agents/`, then cwd `.pi/agents/`, then `.claude/.gemini/.codex` (cwd then home). First name wins. `cross-agent` registers `/name` and `/skill:name`. `system-select` `/system` prepends the chosen body. Not passed by `pi-vida` yet. `pi-vida agents <vida>` prints the resolved view (winner, shadows, tools, model, team, both discovery orders) via `resolvedAgentsView` in `extensions/agents-view.ts` (issue #81); the in-session `/agents` command (loaded in every launch mode, #77) shows the same view with UI notify.
 _Avoid_: flattening pack playbooks into these files
 
 **Project overlay**:
@@ -86,7 +86,7 @@ Tool that delegates a task to a specialized agent with an isolated context windo
 _Avoid_: orchestrator, multi-agent (overloaded; "subagent" is the harness's name for the single-tool delegation)
 
 **Team**:
-Dispatcher-only mode, launched only via `pi-vida <vida> team`. The primary loads `extensions/agent-team.ts`, which sets `dispatch_agent` as the ONLY active tool (no read/write/bash) and dispatches tasks to team members as child `pi` processes that always inherit the damage-control gate. Teams live under the `teams:` key of `agent-chain.yaml` (same file and precedence as chains); the default team is `planner, builder, reviewer, researcher`; `PI_TEAM` env overrides the active team; `/team-list` lists them. Structurally mutually exclusive with chain (`agent-chain.ts`) and tilldone (`status-line.ts`): the launcher never loads those in team mode, so `setActiveTools` cannot conflict.
+Dispatcher-only mode, launched only via `pi-vida <vida> team`. The primary loads `extensions/agent-team.ts`, which sets `dispatch_agent` as the ONLY active tool (no read/write/bash) and dispatches tasks to team members as child `pi` processes that always inherit the damage-control gate. Teams live under the `teams:` key of `agent-chain.yaml` (same file and precedence as chains); the default team is `planner, builder, reviewer, researcher`; `PI_TEAM` env overrides the active team. `/team-list` lists teams with member tool lists (`(no agent file)` when a member has no persona); team `session_start` notifies the active team and members (issue #77). Structurally mutually exclusive with chain (`agent-chain.ts`) and tilldone (`status-line.ts`): the launcher never loads those in team mode, so `setActiveTools` cannot conflict.
 _Avoid_: swarm, crew
 
 **Fusion**:

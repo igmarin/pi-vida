@@ -4,10 +4,11 @@
  * exact formatter output. Fixture conventions follow agentScan.test.ts.
  */
 import { afterEach, expect, test } from "bun:test";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { formatAgentsView, resolvedAgentsView } from "./agents-view.ts";
+import { formatAgentsView, formatTeamList, resolvedAgentsView, default as agentsView } from "./agents-view.ts";
+import type { AgentDef } from "./agentScan.ts";
 import { EMPTY_OVERLAY, serializeOverlayEnv } from "./capabilities.ts";
 
 const tmp = join(tmpdir(), `mpa-aview-${process.pid}`);
@@ -201,5 +202,98 @@ test("formatter snapshot with overlay model/thinking", () => {
 	} finally {
 		if (prevOverlay === undefined) delete process.env.PI_OVERLAY;
 		else process.env.PI_OVERLAY = prevOverlay;
+	}
+});
+
+// ---------------------------------------------------------------------------
+// Issue #77: formatTeamList + the in-session /agents default export.
+// ---------------------------------------------------------------------------
+
+function agentDef(name: string, tools: string[]): AgentDef {
+	return {
+		name,
+		description: `${name} desc`,
+		tools,
+		body: "",
+		source: "profiles/agents",
+		path: `/tmp/${name}.yaml`,
+	};
+}
+
+test("formatTeamList: active team starred with member tools", () => {
+	const teams = new Map([
+		["default", { name: "default", description: "d", members: ["planner", "builder"] }],
+		["fast", { name: "fast", description: "f", members: ["builder"] }],
+	]);
+	const agents = [agentDef("planner", ["read", "grep", "find", "ls"]), agentDef("builder", ["read", "write", "edit", "bash"])];
+	const out = formatTeamList(teams, teams.get("default")!, agents);
+	expect(out).toBe(
+		[
+			"* default — planner (read,grep,find,ls), builder (read,write,edit,bash)",
+			"  fast — builder (read,write,edit,bash)",
+		].join("\n"),
+	);
+});
+
+test("formatTeamList: member with no agent file shows (no agent file)", () => {
+	const teams = new Map([["default", { name: "default", description: "d", members: ["ghost", "builder"] }]]);
+	const agents = [agentDef("builder", ["read"])];
+	const out = formatTeamList(teams, teams.get("default")!, agents);
+	expect(out).toBe("* default — ghost (no agent file), builder (read)");
+});
+
+test("formatTeamList: persona with empty tools shows (no tools)", () => {
+	const teams = new Map([["default", { name: "default", description: "d", members: ["blank"] }]]);
+	const out = formatTeamList(teams, teams.get("default")!, [agentDef("blank", [])]);
+	expect(out).toBe("* default — blank (no tools)");
+});
+
+test("default export registers the agents command", () => {
+	const commands: Record<string, { description: string; handler: Function }> = {};
+	agentsView({ registerCommand: (n: string, d: { description: string; handler: Function }) => { commands[n] = d; } } as never);
+	expect(Object.keys(commands)).toEqual(["agents"]);
+	expect(commands.agents.description).toContain("/agents");
+});
+
+test("/agents handler formats the resolved view; UI notify vs stdout", async () => {
+	const dir = mkdtempSync(join(tmpdir(), "aview-cmd-"));
+	mkdirSync(join(dir, ".pi/agents"), { recursive: true });
+	writeFileSync(
+		join(dir, ".pi/agents/agent-chain.yaml"),
+		"teams:\n  default:\n    members: [builder]\n",
+	);
+	writeFileSync(
+		join(dir, ".pi/agents/builder.yaml"),
+		"name: builder\ndescription: b\ntools: read\nbody: |\n  B\n",
+	);
+	const prevHome = process.env.MY_PI_AGENT_HOME;
+	const prevVida = process.env.PI_VIDA;
+	const prevLife = process.env.PI_LIFE;
+	process.env.MY_PI_AGENT_HOME = dir;
+	delete process.env.PI_VIDA;
+	delete process.env.PI_LIFE;
+	const commands: Record<string, { description: string; handler: Function }> = {};
+	try {
+		agentsView({
+			registerCommand: (n: string, d: { description: string; handler: Function }) => { commands[n] = d; },
+		} as never);
+		const seen: { msg: string; level?: string }[] = [];
+		await commands.agents.handler("", {
+			cwd: dir,
+			hasUI: true,
+			ui: { notify: (msg: string, level?: string) => seen.push({ msg, level }) },
+		});
+		expect(seen.length).toBe(1);
+		expect(seen[0].level).toBe("info");
+		expect(seen[0].msg).toContain("vida:");
+		expect(seen[0].msg).toContain("team: default (default)");
+	} finally {
+		if (prevHome === undefined) delete process.env.MY_PI_AGENT_HOME;
+		else process.env.MY_PI_AGENT_HOME = prevHome;
+		if (prevVida === undefined) delete process.env.PI_VIDA;
+		else process.env.PI_VIDA = prevVida;
+		if (prevLife === undefined) delete process.env.PI_LIFE;
+		else process.env.PI_LIFE = prevLife;
+		rmSync(dir, { recursive: true, force: true });
 	}
 });
