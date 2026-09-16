@@ -750,7 +750,10 @@ main() {
         exit 2
       fi
       local agents_root
-      agents_root="$(resolve_root)"
+      # Command substitution is the fail-closed mechanism (same convention as
+      # the overlay_extras capture below/above): a failed resolve_root cannot
+      # flow into a confusing secondary "missing profile" error.
+      agents_root="$(resolve_root)" || exit 2
       collect_launch_args "${agents_root}" "${agents_life}" solo
       local script_dir
       script_dir="$(cd "$(dirname "$(real_script_path)")" && pwd)"

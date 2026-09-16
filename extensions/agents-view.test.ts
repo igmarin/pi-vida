@@ -165,35 +165,41 @@ test("relative cwd yields absolute agent paths and starred order", () => {
 
 test("formatter snapshot with overlay model/thinking", () => {
 	seed();
+	const prevOverlay = process.env.PI_OVERLAY;
 	process.env.PI_OVERLAY = serializeOverlayEnv({
 		...EMPTY_OVERLAY,
 		models: { builder: "openrouter/x" },
 		thinking: { builder: "high" },
 	});
-	const v = resolvedAgentsView(cwd, "ruby", import.meta.url, home);
-	expect(formatAgentsView(v)).toBe(
-		[
-			"vida: ruby",
-			`harness: ${harness}`,
-			`cwd: ${cwd}`,
-			"team: default (default)",
-			"members: planner, builder, reviewer, researcher",
-			`chain-file: ${harness}/profiles/agents/agent-chain.yaml [profiles/agents]`,
-			"chain-order: .pi/agents > profiles/ruby/agents > *profiles/agents",
-			"agent-order: *profiles/ruby/agents > *profiles/agents > *.pi/agents > .claude > .gemini > .codex > ~/.claude > ~/.gemini > ~/.codex",
-			"agent: planner",
-			"  source: profiles/ruby/agents",
-			`  path: ${harness}/profiles/ruby/agents/planner.yaml`,
-			"  tools: read, grep",
-			"  model: inherit",
-			"  thinking: inherit",
-			"agent: builder",
-			"  source: profiles/agents",
-			`  path: ${harness}/profiles/agents/builder.yaml`,
-			"  tools: read, write, edit, bash",
-			"  model: openrouter/x",
-			"  thinking: high",
-			`  shadows: ${cwd}/.pi/agents/builder.yaml`,
-		].join("\n"),
-	);
+	try {
+		const v = resolvedAgentsView(cwd, "ruby", import.meta.url, home);
+		expect(formatAgentsView(v)).toBe(
+			[
+				"vida: ruby",
+				`harness: ${harness}`,
+				`cwd: ${cwd}`,
+				"team: default (default)",
+				"members: planner, builder, reviewer, researcher",
+				`chain-file: ${harness}/profiles/agents/agent-chain.yaml [profiles/agents]`,
+				"chain-order: .pi/agents > profiles/ruby/agents > *profiles/agents",
+				"agent-order: *profiles/ruby/agents > *profiles/agents > *.pi/agents > .claude > .gemini > .codex > ~/.claude > ~/.gemini > ~/.codex",
+				"agent: planner",
+				"  source: profiles/ruby/agents",
+				`  path: ${harness}/profiles/ruby/agents/planner.yaml`,
+				"  tools: read, grep",
+				"  model: inherit",
+				"  thinking: inherit",
+				"agent: builder",
+				"  source: profiles/agents",
+				`  path: ${harness}/profiles/agents/builder.yaml`,
+				"  tools: read, write, edit, bash",
+				"  model: openrouter/x",
+				"  thinking: high",
+				`  shadows: ${cwd}/.pi/agents/builder.yaml`,
+			].join("\n"),
+		);
+	} finally {
+		if (prevOverlay === undefined) delete process.env.PI_OVERLAY;
+		else process.env.PI_OVERLAY = prevOverlay;
+	}
 });
