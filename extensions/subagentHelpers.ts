@@ -21,6 +21,24 @@ export const PER_TASK_OUTPUT_CAP = 50 * 1024;
 export const KILL_GRACE_MS = 5_000;
 export const DEFAULT_CHILD_TIMEOUT_MS = 15 * 60 * 1000;
 
+/** Best-effort child kill: the whole process group on unix, else the child
+ * alone; falls back to killing the child when the group kill fails. */
+export function killChildTree(
+	proc: { pid?: number; kill: (sig: NodeJS.Signals) => boolean },
+	sig: NodeJS.Signals,
+): void {
+	try {
+		if (process.platform !== "win32" && proc.pid) process.kill(-proc.pid, sig);
+		else proc.kill(sig);
+	} catch {
+		try {
+			proc.kill(sig);
+		} catch {
+			/* ignore */
+		}
+	}
+}
+
 /** Wall-clock timeout for a child `pi`. Override with `PI_CHILD_TIMEOUT_MS`. */
 export function childTimeoutMs(env: NodeJS.ProcessEnv = process.env): number {
 	const raw = env.PI_CHILD_TIMEOUT_MS;
@@ -462,31 +480,19 @@ async function runSingleAgentOnce(opts: RunOpts): Promise<SingleResult> {
 			let aborted = false;
 			let killTimer: ReturnType<typeof setTimeout> | null = null;
 			let timer: ReturnType<typeof setTimeout> | undefined;
-			const signalTree = (sig: NodeJS.Signals) => {
-				try {
-					if (process.platform !== "win32" && proc.pid) process.kill(-proc.pid, sig);
-					else proc.kill(sig);
-				} catch {
-					try {
-						proc.kill(sig);
-					} catch {
-						/* ignore */
-					}
-				}
-			};
 			// ChildProcess.killed only means a signal was sent, so escalation
 			// tracks the close/error event, not proc.killed. process.exit()
 			// skips the grace timer, so also SIGKILL on parent exit.
 			const killChild = () => {
-				signalTree("SIGTERM");
+				killChildTree(proc, "SIGTERM");
 				if (killTimer) clearTimeout(killTimer);
 				killTimer = setTimeout(() => {
 					killTimer = null;
-					if (!closed) signalTree("SIGKILL");
+					if (!closed) killChildTree(proc, "SIGKILL");
 				}, KILL_GRACE_MS);
 			};
 			const onProcessExit = () => {
-				if (!closed) signalTree("SIGKILL");
+				if (!closed) killChildTree(proc, "SIGKILL");
 			};
 			process.on("exit", onProcessExit);
 			const onAbort = () => {

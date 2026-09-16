@@ -11,6 +11,7 @@ import {
 	formatUsageStats,
 	getFinalOutput,
 	isFailedResult,
+	killChildTree,
 	mapWithConcurrencyLimit,
 	MAX_PARALLEL_OUTPUT_BYTES,
 	parseSubagentLine,
@@ -22,6 +23,63 @@ import {
 	type RunOpts,
 	type SingleResult,
 } from "./subagentHelpers.ts";
+
+describe("killChildTree", () => {
+	const fakeProc = (pid: number | undefined, calls: string[]) => ({
+		pid,
+		kill: (sig: NodeJS.Signals) => {
+			calls.push(`child:${sig}`);
+			return true;
+		},
+	});
+
+	test("unix kills the process group", () => {
+		const calls: string[] = [];
+		const origKill = process.kill;
+		const origPlatform = process.platform;
+		Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+		process.kill = ((pid: number, sig: NodeJS.Signals) => {
+			calls.push(`group:${pid}:${sig}`);
+			return true;
+		}) as typeof process.kill;
+		try {
+			killChildTree(fakeProc(42, calls), "SIGTERM");
+			expect(calls).toEqual(["group:-42:SIGTERM"]);
+		} finally {
+			process.kill = origKill;
+			Object.defineProperty(process, "platform", { value: origPlatform, configurable: true });
+		}
+	});
+
+	test("group kill failure falls back to the child", () => {
+		const calls: string[] = [];
+		const origKill = process.kill;
+		const origPlatform = process.platform;
+		Object.defineProperty(process, "platform", { value: "linux", configurable: true });
+		process.kill = (() => {
+			throw new Error("ESRCH");
+		}) as typeof process.kill;
+		try {
+			killChildTree(fakeProc(42, calls), "SIGTERM");
+			expect(calls).toEqual(["child:SIGTERM"]);
+		} finally {
+			process.kill = origKill;
+			Object.defineProperty(process, "platform", { value: origPlatform, configurable: true });
+		}
+	});
+
+	test("win32 kills the child directly", () => {
+		const calls: string[] = [];
+		const origPlatform = process.platform;
+		Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+		try {
+			killChildTree(fakeProc(42, calls), "SIGKILL");
+			expect(calls).toEqual(["child:SIGKILL"]);
+		} finally {
+			Object.defineProperty(process, "platform", { value: origPlatform, configurable: true });
+		}
+	});
+});
 
 function emptyResult(): SingleResult {
 	return {
