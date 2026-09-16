@@ -20,6 +20,29 @@ install:
 build:
     cargo build --release --manifest-path "{{root}}/crates/pi-vida/Cargo.toml"
 
+# Vendored-tree drift check (issue #94): fail on uncommitted edits inside
+# extensions/fusion-harness, print the committed diff vs the vendoring commit.
+# Committed drift may be a deliberate refresh; the printed stat is the review
+# surface. Runs against the repo root regardless of cwd.
+vendor-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root="{{root}}"
+    dirty="$(git -C "${root}" status --porcelain -- extensions/fusion-harness)"
+    if [[ -n "${dirty}" ]]; then
+      echo "vendor-check: uncommitted edits in the vendored tree (commit them or restore upstream):" >&2
+      echo "${dirty}" >&2
+      exit 1
+    fi
+    vendor_commit="$(git -C "${root}" log --diff-filter=A --format=%H -- extensions/fusion-harness/VENDORED.md | head -1)"
+    if [[ -z "${vendor_commit}" ]]; then
+      echo "vendor-check: no vendoring commit found for extensions/fusion-harness/VENDORED.md" >&2
+      exit 1
+    fi
+    echo "vendor-check: committed drift vs vendoring commit ${vendor_commit}:"
+    git -C "${root}" diff --stat "${vendor_commit}" -- extensions/fusion-harness || true
+    echo "vendor-check ok"
+
 # Provision PI_SKILLS_HOME from packs.yaml: clone pack/skill repos, symlink
 # skills into ~/.agents/skills, write .dotskills-manifest.json. Idempotent.
 skills:
