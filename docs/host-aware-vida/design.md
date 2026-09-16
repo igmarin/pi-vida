@@ -2,7 +2,7 @@
 
 > **Status:** Proposed for review
 
-This is the product contract for the gum/Rust launcher (issue #82). Today's tree still ships `bin/pi-life` and profile key `life:` (issue #75 owns the rename). This document uses the intended names `pi-vida` and `vida` so #82 does not invent them.
+This is the product contract for the gum/Rust launcher (issue #82). The repo, binary, and profile glossary were renamed to `pi-vida`/`vida` in #75; this document uses those names throughout.
 
 Current Pi launch, skills home, and INV-skills: [ARCHITECTURE.md](../../ARCHITECTURE.md).
 
@@ -22,7 +22,7 @@ Required:
 
 Out of scope here (other tickets own them):
 
-- Renaming the GitHub repo or `bin/pi-life` (#75).
+- Renaming the GitHub repo or `bin/pi-vida` (shipped in #75).
 - Implementing the Rust/gum binary (#82).
 - The agents inspector (#81).
 - Onboarding docs for other people (#78).
@@ -36,7 +36,7 @@ Out of scope here (other tickets own them):
 
 ## 2. User experience
 
-The user runs `pi-vida` from the **target repo**, as they do with `pi-life` today.
+The user runs `pi-vida` from the **target repo**, as they do with `bin/pi-vida` today.
 
 ### CLI
 
@@ -125,7 +125,7 @@ Cline, Kilo, and Claude Code discover every skill in their folders. The allowlis
 
 **INV-1 Identity.** A skill is a directory that contains `SKILL.md`. The skill name is the directory name. That matches [agentskills.io](https://agentskills.io/specification) (`name` must match the parent directory). Frontmatter `name` is the skill's problem when it disagrees; the launcher keys on the directory.
 
-**INV-2 Home.** Canonical home is `PI_SKILLS_HOME` if set, else `~/.agents/skills` (Cline's recommended global path). Repo cache stays `${PI_LIFE_REPOS:-~/.local/share/pi-life/repos}` until #75 relocates it. Do not add a second cache.
+**INV-2 Home.** Canonical home is `PI_SKILLS_HOME` if set, else `~/.agents/skills` (Cline's recommended global path). Repo cache stays `${PI_VIDA_REPOS:-~/.local/share/pi-vida/repos}` (`PI_LIFE_REPOS` legacy fallback), per `scripts/skills-bootstrap.ts`. Do not add a second cache.
 
 **INV-3 Allowlist.** `profiles/<vida>.yaml` is the allowlist: `mantra`, `packs`, `tracker`. The launched vida is the filename plus `canonical_life` (aliases), not a field inside the file. Key `vida:` is the name to write; `life:` is still parsed. Either key alone is enough; do not compare it to the CLI name. Both present and equal: accept. Both present and different: exit 2. Neither key: still valid if the mapping of mantra/packs/tracker (and optional models/thinking) parses. Packs resolve through `.dotskills-manifest.json` (`<pack>:<name>` → flat dir name) when the manifest exists; malformed manifest or a recorded skill missing `SKILL.md` exits 2; a pack with no manifest entries falls back to `<home>/<pack>`. Shipping `vida:` in the YAML files is #75, not #82.
 
