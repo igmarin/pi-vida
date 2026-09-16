@@ -12,17 +12,17 @@ just install          # bun install + symlink pi-vida onto ~/.local/bin (pi-life
 just skills           # provision ~/.agents/skills from packs.yaml
 ```
 
-That's all you need to *use* `pi-vida` — launch it from your own repos, not from this clone. `pi-life` still works as a shim for one release (`pi-life is now pi-vida` on stderr, then the same argv).
+That's all you need to run `pi-vida`. Launch it from your own repos, not from this clone. `pi-life` still works as a shim for one release (`pi-life is now pi-vida` on stderr, then the same argv).
 
 > Only if you're contributing to the harness itself: `git config core.hooksPath .githooks` (rs-guard pre-commit) or `scripts/install-hooks.sh`. Using `pi-vida` in your own repos needs no hooks.
 
-Skills: every allowlisted mantra/pack/tracker name resolves to a directory under `PI_SKILLS_HOME` (default `~/.agents/skills`). `just skills` is the supported bootstrap: it reads `packs.yaml` (allowlist name → `owner/repo`), clones each repo into `~/.local/share/pi-vida/repos`, symlinks every `skills/<name>/SKILL.md` into the skills home, and writes `.dotskills-manifest.json` so pack names resolve to their installed skills. Re-run it after pulling the harness or adding a pack; it is idempotent and never overwrites a non-symlink dir. Manual alternative: install packs with dotskills, or drop/symlink any directory containing a `SKILL.md` in there. Missing **required** paths — a mantra, or a tracker the profile configures — exit 2 at launch; a missing pack only warns and launch continues. A malformed `.dotskills-manifest.json` or a manifest entry missing its `SKILL.md` also exits 2.
+Skills: every allowlisted mantra/pack/tracker name resolves to a directory under `PI_SKILLS_HOME` (default `~/.agents/skills`). `just skills` is the supported bootstrap: it reads `packs.yaml` (allowlist name → `owner/repo`), clones each repo into `~/.local/share/pi-vida/repos`, symlinks every `skills/<name>/SKILL.md` into the skills home, and writes `.dotskills-manifest.json` so pack names resolve to their installed skills. Re-run it after pulling the harness or adding a pack; it is idempotent and never overwrites a non-symlink dir. Manual alternative: install packs with dotskills, or drop/symlink any directory containing a `SKILL.md` in there. Missing **required** paths (a mantra, or a tracker the profile configures) exit 2 at launch; a missing pack only warns and launch continues. A malformed `.dotskills-manifest.json` or a manifest entry missing its `SKILL.md` also exits 2.
 
-Requirements: `pi` and `bun` on PATH (fail-closed, checked by `pi-vida doctor`); optional `just`, `rs-guard`, `herdr` (warn only). The `DEEPSEEK_API_KEY` for rs-guard reviews lives in the environment or `~/.config/rs-guard/env` — never in a target repo.
+Requirements: `pi` and `bun` on PATH (fail-closed, checked by `pi-vida doctor`); optional `just`, `rs-guard`, `herdr` (warn only). The `DEEPSEEK_API_KEY` for rs-guard reviews lives in the environment or `~/.config/rs-guard/env`; never in a target repo.
 
 ## Updating
 
-`~/.local/bin/pi-vida` is a symlink into the clone, so `git pull` updates the code in place — no reinstall, no need to remove the command first.
+`~/.local/bin/pi-vida` is a symlink into the clone, so `git pull` updates the code in place; no reinstall and no need to remove the command first.
 
 ```sh
 git pull
@@ -41,14 +41,14 @@ pi-vida ruby          # solo mode (default)
 
 Two things happen on the first launch in a repo:
 
-1. **Clarify gate** — `write`/`edit` are blocked until you run `/clarify` to accept the prompt. Read-only tools stay available so the model can explore. (Three different things share the word "clarify": the `/clarify` **command** opens the gate; the `clarify` **skill** and `requirements-clarifier` **skill** are the always-on mantra skills that help the model refine your prompt. Only the command is something you interact with directly.)
-2. **Boot TUI** (only when `.pi/capabilities.yaml` does not exist): the six capability toggles (graphify, codegraph, serena, rs-guard, obscura, playwright) and optional per-role model/thinking. Saving is explicit — a cancelled prompt skips the write.
+1. **Clarify gate**: `write`/`edit` are blocked until you run `/clarify` to accept the prompt. Read-only tools stay available so the model can explore. (Three different things share the word "clarify": the `/clarify` **command** opens the gate; the `clarify` **skill** and `requirements-clarifier` **skill** are the always-on mantra skills that help the model refine your prompt. Only the command is something you interact with directly.)
+2. **Boot TUI** (only when `.pi/capabilities.yaml` does not exist): the six capability toggles (graphify, codegraph, serena, rs-guard, obscura, playwright) and optional per-role model/thinking. Saving is explicit; a cancelled prompt skips the write.
 
 Second launch with a saved overlay: no TUI. The overlay's `models.solo`/`thinking.solo` become `pi --model`/`--thinking`.
 
 ## Daily driver: vidas and modes
 
-A **vida** is a persona profile — one language identity (`ruby`, `rust`, `python`, `elixir`) with its skills, safety gate, and tracker ([CONTEXT.md](../CONTEXT.md)).
+A **vida** is a persona profile, one language identity (`ruby`, `rust`, `python`, `elixir`) with its skills, safety gate, and tracker ([CONTEXT.md](../CONTEXT.md)).
 
 ```sh
 pi-vida ruby solo     # full toolset + footer status line (default)
@@ -62,11 +62,11 @@ pi-vida --dry-run ruby  # print the pi argv, launch nothing
 
 Aliases: `rails` → `ruby`, `phoenix` → `elixir`. `ecto` and `rails-python` are not vidas (exit 2).
 
-Mode exclusivity is structural: solo loads the status line, chain loads the chain extension, team loads the dispatcher, fusion loads the vendored multi-model extension — never more than one of them.
+Mode exclusivity is structural: solo loads the status line, chain loads the chain extension, team loads the dispatcher, fusion loads the vendored multi-model extension; never more than one of them.
 
 ### Use with Cline or Kilo
 
-No Pi required. From the target repo (needs the built Rust launcher: `just build`). Flags may appear before or after the vida — `pi-vida --host kilo ruby` is the same command.
+No Pi required. From the target repo (needs the built Rust launcher: `just build`). Flags may appear before or after the vida; `pi-vida --host kilo ruby` is the same command.
 
 ```sh
 pi-vida ruby --host cline           # project ruby skills into ~/.agents/skills (Cline's global dir), then run cline
@@ -75,7 +75,7 @@ pi-vida ruby --host claude          # project into ~/.claude/skills, then run cl
 pi-vida --dry-run ruby --host kilo  # preview: projected paths + start hint, writes nothing
 ```
 
-What `--host <name>` does: installs missing allowlisted skills from `packs.yaml` into the skills home (`~/.agents/skills` unless `PI_SKILLS_HOME` is set), symlinks each resolved skill dir into the host's folder (never overwriting a non-symlink dir), projects personas as markdown for Kilo (`~/.config/kilo/agent` and `agents`) and Claude (`~/.claude/agents`) — none for Cline — then execs the host or prints a start hint. Chain, team, and fusion modes are Pi-only: `--host kilo team` exits 2.
+What `--host <name>` does: installs missing allowlisted skills from `packs.yaml` into the skills home (`~/.agents/skills` unless `PI_SKILLS_HOME` is set), symlinks each resolved skill dir into the host's folder (never overwriting a non-symlink dir), projects personas as markdown for Kilo (`~/.config/kilo/agent` and `agents`) and Claude (`~/.claude/agents`); Cline gets no personas. Then it execs the host or prints a start hint. Chain, team, and fusion modes are Pi-only: `--host kilo team` exits 2.
 
 ### Inspect what will run
 
@@ -84,7 +84,7 @@ pi-vida agents ruby            # resolved view for cwd + vida
 pi-vida agents nope            # unknown vida → exit 2
 ```
 
-The vida argument is optional when `PI_VIDA`/`PI_LIFE` is set in the environment. Like launch, `agents` fails closed (exit 2) on a missing mantra/tracker skill path — use `pi-vida doctor` to diagnose a broken install. Chain/team errors that would fail a `chain`/`team` session (malformed `agent-chain.yaml`, unknown `PI_TEAM`) intentionally degrade here to `team: none` — this is a read-only inspector.
+The vida argument is optional when `PI_VIDA`/`PI_LIFE` is set in the environment. Like launch, `agents` fails closed (exit 2) on a missing mantra/tracker skill path; use `pi-vida doctor` to diagnose a broken install. Chain/team errors that would fail a `chain`/`team` session (malformed `agent-chain.yaml`, unknown `PI_TEAM`) intentionally degrade here to `team: none`; this is a read-only inspector.
 
 `key: value` lines: winner/shadowed personas, active team (`team:` / `members:`), the chain file that won, both discovery orders (`*` = exists on disk), and the `--skill` paths launch would pass. Semantics in CONTEXT.md (Agent / Chain); resolver: `resolvedAgentsView` in `extensions/agents-view.ts`.
 
@@ -102,7 +102,7 @@ Slot rules, validation, and the `/fh-*` commands: CONTEXT.md **Fusion**.
 
 ### Cognition (SWE) slots
 
-Cognition's SWE models are served over an OpenAI-compatible endpoint but aren't a built-in Pi provider — register one in `~/.pi/agent/models.json`:
+Cognition's SWE models are served over an OpenAI-compatible endpoint but aren't a built-in Pi provider; register one in `~/.pi/agent/models.json`:
 
 ```json
 {
@@ -117,9 +117,9 @@ Cognition's SWE models are served over an OpenAI-compatible endpoint but aren't 
 }
 ```
 
-`apiKey` interpolates `$VAR`/`${VAR}` from the environment (or a `!command`, or a literal — keep secrets out of the file per the secrets rule). Because it lives in `models.json`, the provider is visible to clean-room children (`pi --no-extensions --list-models`), which is what fusion's slot validation requires. `stacks/model-stack-cognition.yaml` is the copy template. Set `COGNITION_API_KEY` or put a literal in `models.json` — the launcher does not parse the stack for keys.
+`apiKey` interpolates `$VAR`/`${VAR}` from the environment (or a `!command`, or a literal; keep secrets out of the file per the secrets rule). Because it lives in `models.json`, the provider is visible to clean-room children (`pi --no-extensions --list-models`), which is what fusion's slot validation requires. `stacks/model-stack-cognition.yaml` is the copy template. Set `COGNITION_API_KEY` or put a literal in `models.json`; the launcher does not parse the stack for keys.
 
-`https://api.cognition.ai/v1` is the conventional default, but Cognition provisions endpoints per customer — if a request 401s with a valid key, use the base URL from your Cognition onboarding (as `baseUrl` here, or `COGNITION_API_BASE` for LiteLLM-style tools). Sanity-check the key before touching the stack: `curl https://api.cognition.ai/v1/chat/completions -H "Authorization: Bearer $COGNITION_API_KEY" -d '{"model":"swe-1.7","messages":[{"role":"user","content":"hi"}],"max_tokens":20}'`.
+`https://api.cognition.ai/v1` is the conventional default, but Cognition provisions endpoints per customer. If a request 401s with a valid key, use the base URL from your Cognition onboarding (as `baseUrl` here, or `COGNITION_API_BASE` for LiteLLM-style tools). Sanity-check the key before touching the stack: `curl https://api.cognition.ai/v1/chat/completions -H "Authorization: Bearer $COGNITION_API_KEY" -d '{"model":"swe-1.7","messages":[{"role":"user","content":"hi"}],"max_tokens":20}'`.
 
 ## Project overlay (`.pi/capabilities.yaml`)
 
@@ -142,7 +142,7 @@ thinking:
 
 - Capabilities gate the `<capabilities>` system-prompt block; the model never sees a capability that is off.
 - `extra_skills` and `tracker.skill` become `--skill` argv entries so the model can actually use them.
-- `models`/`thinking` roles: `solo` (primary `--model`/`--thinking`) and `planner`/`builder`/`reviewer`/`researcher` — chain/team/subagent children dispatch with the entry keyed on the **child's agent name**, falling back to the primary's current model when the agent has no entry. Profile-level `models:`/`thinking:` merge under the overlay's as defaults (overlay wins per role), so profile defaults reach children without repeating them in every project.
+- `models`/`thinking` roles: `solo` (primary `--model`/`--thinking`) and `planner`/`builder`/`reviewer`/`researcher`. Chain/team/subagent children dispatch with the entry keyed on the **child's agent name**, falling back to the primary's current model when the agent has no entry. Profile-level `models:`/`thinking:` merge under the overlay's as defaults (overlay wins per role), so profile defaults reach children without repeating them in every project.
 - Hand-edit freely; the launcher re-parses and re-validates every launch.
 
 ## Per-project agents, chains, teams
@@ -198,7 +198,7 @@ pi-vida ruby team
 PI_TEAM=fast pi-vida ruby team    # override the active team (default: planner, builder, reviewer, researcher)
 ```
 
-`/agents` (loaded in every launch mode) prints the resolved agents view — semantics in CONTEXT.md (Agent). `pi-vida agents <vida>` prints the same view plus the `--skill` paths the launcher would pass (those lines come from the launcher, not the view). Team mode also notifies the active team and member tool lists at session start.
+`/agents` (loaded in every launch mode) prints the resolved agents view; semantics are in CONTEXT.md (Agent). `pi-vida agents <vida>` prints the same view plus the `--skill` paths the launcher would pass (those lines come from the launcher, not the view). Team mode also notifies the active team and member tool lists at session start.
 
 ### Team panes inside Herdr (INV-herdr)
 
@@ -211,16 +211,16 @@ herdr agent start lead --kind pi -- pi-vida ruby team
 # `pi-vida ruby solo` with PI_VIDA_WORKER=<member> exported.
 ```
 
-- Members are **solo** sessions (never nested team dispatchers) with a reduced base: damage-control + capabilities + team-member + `--no-skills`. No boot-config wizard, no clarify-gate (workers skip the ritual), no status-line. A member that cannot resolve its persona fails its session start — it never degrades to an unrestricted solo agent. It resolves its model like any solo session (`models.solo`/`thinking.solo` from the merged overlay); per-member role maps stay a dispatch-time concern of `agent-team.ts`.
+- Members are **solo** sessions (never nested team dispatchers) with a reduced base: damage-control + capabilities + team-member + `--no-skills`. No boot-config wizard, no clarify-gate (workers skip the gate), no status-line. A member that cannot resolve its persona fails its session start; it never degrades to an unrestricted solo agent. It resolves its model like any solo session (`models.solo`/`thinking.solo` from the merged overlay); per-member role maps stay a dispatch-time concern of `agent-team.ts`.
 - The primary exports `PI_HERDR_MEMBERS` and `dispatch_agent` prompts that member's pane with `herdr agent prompt <member> <task> --wait`, then reads the answer with `herdr agent read <member> --source recent-unwrapped`. Dispatching a name the launcher did not start is an immediate error, not a hang.
-- Fail closed: if any `pane split`/`agent start` fails, pi-vida prints stderr and exits 2 — it never falls back to hidden children in the same session. Panes already created stay open; quit of the primary aborts in-flight prompts and leaves panes alone.
+- Fail closed: if any `pane split`/`agent start` fails, pi-vida prints stderr and exits 2; it never falls back to hidden children in the same session. Panes already created stay open; quit of the primary aborts in-flight prompts and leaves panes alone.
 - Outside Herdr nothing changes: members are hidden `pi` children with the SIGTERM→SIGKILL contract, and no `herdr` binary is required.
 
 ## rs-guard review flow
 
 - **Pre-commit**: reviews **staged** files; `REQUEST_CHANGES` (exit 2) aborts the commit. Bypass: `git commit --no-verify`.
 - **PRs**: `.github/workflows/rs-guard-review.yml` reviews every non-draft PR.
-- **Chain steps**: `rs_guard: true` runs rs-guard on `git diff HEAD` before the step and feeds findings into the agent — the agent verifies findings, it does not re-run the binary.
+- **Chain steps**: `rs_guard: true` runs rs-guard on `git diff HEAD` before the step and feeds findings into the agent; the agent verifies findings, it does not re-run the binary.
 - Config: `.reviewer.toml` (provider, model); ignore list: `.rs-guardignore`.
 
 ## Doctor, excludesfile, herdr
@@ -230,9 +230,9 @@ pi-vida doctor           # machine + cwd health; sweeps every profile's skills (
 pi-vida doctor ruby      # fail-closed preflight for the ruby vida
 ```
 
-`doctor <vida>` fails closed on missing `pi`/`bun` or missing mantra/tracker skill paths — the same contract the launcher enforces. Bare `doctor` sweeps all profiles and warns (deduped, exit 0) on missing mantra/tracker/pack skills so a fresh machine shows the gap before launch. Both modes still exit 2 on a malformed profile or `.dotskills-manifest.json` — a broken config is a launch failure, not a warning. Both warn on `just`, `rs-guard`, `ocr` (or `npx` to run it on demand), `herdr`, and a missing/incomplete `git config --get core.excludesfile` (needs: `node_modules`, `.pi/agent-sessions/`, `.env`, `graphify-out/`, `.codegraph/`).
+`doctor <vida>` fails closed on missing `pi`/`bun` or missing mantra/tracker skill paths; the same contract the launcher enforces. Bare `doctor` sweeps all profiles and warns (deduped, exit 0) on missing mantra/tracker/pack skills so a fresh machine shows the gap before launch. Both modes still exit 2 on a malformed profile or `.dotskills-manifest.json`; a broken config is a launch failure, not a warning. Both warn on `just`, `rs-guard`, `ocr` (or `npx` to run it on demand), `herdr`, and a missing/incomplete `git config --get core.excludesfile` (needs: `node_modules`, `.pi/agent-sessions/`, `.env`, `graphify-out/`, `.codegraph/`).
 
-Herdr hosts parallel vidas: `herdr agent start reviewer --kind pi -- pi-vida ruby`. The `herdr` skill is allowlisted everywhere but no-ops unless `HERDR_ENV=1`. Inside Herdr, `pi-vida <vida> team` also uses it (see "Team panes inside Herdr" above) — the prompt-only exception to the extension-no-herdr rule.
+Herdr hosts parallel vidas: `herdr agent start reviewer --kind pi -- pi-vida ruby`. The `herdr` skill is allowlisted everywhere but no-ops unless `HERDR_ENV=1`. Inside Herdr, `pi-vida <vida> team` also uses it (see "Team panes inside Herdr" above); the prompt-only exception to the extension-no-herdr rule.
 
 ## Troubleshooting
 
@@ -244,14 +244,14 @@ Herdr hosts parallel vidas: `herdr agent start reviewer --kind pi -- pi-vida rub
 | exit 2, `invalid skill identity manifest` / `missing installed skill` | `.dotskills-manifest.json` is corrupt or an installed skill dir was removed | reinstall the pack with dotskills, or remove the manifest to fall back to plain dirs |
 | exit 2, `unknown vida` / `not a vida` | typo or `ecto`/`rails-python` | use `rust`, `elixir`, `ruby`, `python` (or alias) |
 | `Unknown session` | resume/attach with an ID the local store doesn't know | start from the same repo/machine; `pi --list-sessions`; or just relaunch `pi-vida <vida>` |
-| `Damage-Control: <tool> blocked` | the gate caught `git push`, `reset --hard`, `clean`, a protected path (`.env`, `auth.json`), or a write outside cwd | intended behavior; ask the user how to proceed — the turn continues |
+| `Damage-Control: <tool> blocked` | the gate caught `git push`, `reset --hard`, `clean`, a protected path (`.env`, `auth.json`), or a write outside cwd | intended behavior; ask the user how to proceed; the turn continues |
 | `Clarify gate: write/edit is blocked…` | the session hasn't accepted a prompt yet | run `/clarify` after landing the prompt you want |
 | `chain … rs-guard failed (exit 2)` | rs-guard `REQUEST_CHANGES` on the diff | address the findings, commit, re-run the chain |
-| `rs-guard: Error occurred (exit 1)` / `Request timed out` | the review provider's API is unreachable — a transport failure, not a verdict | retry; bypass with `git commit --no-verify` while the provider is down |
+| `rs-guard: Error occurred (exit 1)` / `Request timed out` | the review provider's API is unreachable; a transport failure, not a verdict | retry; bypass with `git commit --no-verify` while the provider is down |
 | `401: incorrect_api_key` when the agent speaks | the configured pi model's key is wrong or absent | `/model` to a working provider, or fix the key in pi's config |
 | write prompt missing on first boot | no UI (print/JSON mode) | boot TUI needs a terminal; run interactively once |
 | child `pi` still running after Escape / Ctrl+C / `/exit` | parent waited on a child that ignored SIGTERM, or a bash descendant was outside the process group | wait 5s for SIGKILL; leftover processes after that are a bug. Wall-clock kill is `PI_CHILD_TIMEOUT_MS` (default 15 minutes) |
-| team dispatch hangs waiting on a member | the member (or hidden child) never answers; dispatch waits on `--wait`/join until the wall-clock timeout | interrupt the dispatch or wait it out — the same `PI_CHILD_TIMEOUT_MS` wall clock (default 15 min) also bounds Herdr `agent prompt --wait` |
+| team dispatch hangs waiting on a member | the member (or hidden child) never answers; dispatch waits on `--wait`/join until the wall-clock timeout | interrupt the dispatch or wait it out; the same `PI_CHILD_TIMEOUT_MS` wall clock (default 15 min) also bounds Herdr `agent prompt --wait` |
 
 ## Environment variables
 
@@ -281,4 +281,4 @@ just test-dotskills  # manual e2e: real dotskills install -> pack resolution (ne
 just --list       # ext-* recipes for hacking on extensions standalone
 ```
 
-Never add a `justfile` to a target repo. Harness config (profiles, overlays, damage-control rules, chains) is YAML — do not introduce TOML.
+Never add a `justfile` to a target repo. Harness config (profiles, overlays, damage-control rules, chains) is YAML; do not introduce TOML.

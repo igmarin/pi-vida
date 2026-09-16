@@ -14,8 +14,8 @@ import { parse as yamlParse } from "yaml";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { homedir } from "node:os";
-import { fileURLToPath } from "node:url";
 import { applyExtensionDefaults } from "./themeMap.ts";
+import { harnessRoot } from "./agentScan.ts";
 
 interface Rule {
 	pattern: string;
@@ -120,13 +120,6 @@ export function isPathMatch(targetPath: string, pattern: string, cwd: string): b
 	const regex = new RegExp(`^${regexPattern}$|^${regexPattern}/|/${regexPattern}$|/${regexPattern}/`);
 	const relativePath = relative(cwd, targetPath);
 	return regex.test(targetPath) || regex.test(relativePath);
-}
-
-function harnessRoot(): string {
-	if (process.env.PI_VIDA_HOME) return process.env.PI_VIDA_HOME;
-	if (process.env.PI_LIFE_HOME) return process.env.PI_LIFE_HOME;
-	if (process.env.MY_PI_AGENT_HOME) return process.env.MY_PI_AGENT_HOME;
-	return resolve(dirname(fileURLToPath(import.meta.url)), "..");
 }
 
 function parseRulesFile(rulesPath: string): Rules {

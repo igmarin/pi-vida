@@ -1,6 +1,6 @@
 # pi-vida architecture
 
-## Executive summary
+## Summary
 
 pi-vida is a launcher and extension set for the Pi coding agent. It turns a
 per-language profile (`profiles/<vida>.yaml`) into one `pi` invocation: a fixed
@@ -9,23 +9,25 @@ skills the profile allowlists. The source of truth for what a vida loads is the
 profile YAML; the source of truth for where skills come from is `packs.yaml`
 plus the skills home (`PI_SKILLS_HOME`, default `~/.agents/skills`).
 
-The most important rule is **INV-skills**: every session, including dispatched
-children, starts with `-e extensions/damage-control-continue.ts --no-skills`
-and only allowlisted `--skill` paths. `bin/pi-vida` enforces it for the primary
-session; `extensions/subagentHelpers.ts` enforces it in `buildChildArgv` for
-every child `pi` spawn. No code path may launch a session without the
-damage-control gate.
+**INV-skills**: every session, including dispatched children, starts with
+`-e extensions/damage-control-continue.ts --no-skills` and only allowlisted
+`--skill` paths. `libexec/pi-vida-launch` enforces it for the primary session;
+`extensions/subagentHelpers.ts` enforces it in `buildChildArgv` for every child
+`pi` spawn. No code path may launch a session without the damage-control gate.
 
 ### System architecture
 
 ```mermaid
 flowchart LR
-    user([user in target repo]) -->|pi-vida ruby team| PL[bin/pi-vida<br/>bash launcher]
+    user([user in target repo]) -->|pi-vida ruby team| WRAP[bin/pi-vida<br/>wrapper]
+    WRAP -->|built| RUST[crates/pi-vida<br/>Rust launcher<br/>gum, --host cline/kilo/claude]
+    WRAP -->|not built| PL[libexec/pi-vida-launch<br/>bash launcher]
+    RUST -->|Pi launch| PL
     PL -->|reads| PROF[profiles/ruby.yaml<br/>vida, mantra, packs, tracker,<br/>models, thinking]
     PL -->|reads| OV[target repo<br/>.pi/capabilities.yaml<br/>project overlay]
     PL -->|resolves names| SH[(skills home<br/>~/.agents/skills<br/>+ .dotskills-manifest.json)]
     PL -->|exec| PI[pi process<br/>host agent runtime]
-    PI --> EXT[extensions/<br/>damage-control, boot-config,<br/>capabilities, clarify-gate, mode ext]
+    PI --> EXT[extensions/<br/>damage-control, boot-config,<br/>capabilities, clarify-gate,<br/>agents-view, mode ext]
     PI -->|reads/writes| REPO[target repo files]
     PI -->|spawns children| CHILD[child pi sessions<br/>chain steps, team members]
     CHILD -.->|always inherits| DC[damage-control + --no-skills]
@@ -33,9 +35,14 @@ flowchart LR
     BOOT -->|symlink + manifest| SH
 ```
 
-`pi-vida` itself is a bash script. It shells out to `bun` only to parse YAML
-(profiles, overlay, manifest) through `extensions/capabilities.ts` and
-`extensions/installed-skills.ts`, then `exec`s `pi` with the assembled argv.
+`bin/pi-vida` is a wrapper: it execs `crates/pi-vida/target/release/pi-vida`
+(the Rust launcher, built with `just build`) when that binary exists, else
+`libexec/pi-vida-launch` (the bash launcher). The Rust binary runs the
+interactive gum flow and the non-Pi `--host cline|kilo|claude` path, then
+delegates Pi invocations back to the bash launcher. The bash launcher shells
+out to `bun` only to parse YAML (profiles, overlay, manifest) through
+`extensions/capabilities.ts` and `extensions/installed-skills.ts`, then `exec`s
+`pi` with the assembled argv.
 
 ### Dependency hierarchy
 
@@ -43,7 +50,10 @@ flowchart LR
 flowchart TD
     PACKS[packs.yaml<br/>install sources] --> BOOT[skills-bootstrap.ts]
     BOOT --> SH[(skills home)]
-    PROF[profiles/*.yaml<br/>+ profiles/agents/*.yaml] --> PL[bin/pi-vida]
+    WRAP[bin/pi-vida<br/>wrapper] --> RUST[crates/pi-vida<br/>Rust launcher<br/>gum, --host cline/kilo/claude]
+    WRAP --> PL[libexec/pi-vida-launch<br/>bash launcher]
+    RUST --> PL
+    PROF[profiles/*.yaml<br/>+ profiles/agents/*.yaml] --> PL
     OV[.pi/capabilities.yaml<br/>in target repo] --> PL
     SH --> PL
     PL -->|exec argv| PI[pi host]
@@ -61,7 +71,7 @@ concern (theme + terminal title); the first `-e` extension wins.
 
 ## Launch pipeline
 
-`launch_life` in `bin/pi-vida` builds the argv in a fixed order. Each step can
+`launch_life` in `libexec/pi-vida-launch` builds the argv in a fixed order. Each step can
 fail closed (exit 2) before `pi` starts.
 
 ```mermaid
@@ -74,7 +84,7 @@ sequenceDiagram
 
     U->>PL: pi-vida ruby team
     PL->>PL: canonical_life (rails→ruby; ecto/rails-python exit 2)
-    PL->>PL: base argv: -e damage-control, boot-config,<br/>capabilities, clarify-gate, --no-skills (+ mode ext)
+    PL->>PL: base argv: -e damage-control, boot-config,<br/>capabilities, clarify-gate, agents-view, --no-skills (+ mode ext)
     PL->>B: read_profile(profiles/ruby.yaml)
     B-->>PL: TSV rows: kind⇥name[⇥value]
     loop each row
@@ -96,11 +106,18 @@ Order matters:
    any other extension runs.
 2. `boot-config.ts` runs before `capabilities.ts` so the first-launch wizard
    can update `PI_OVERLAY` in the same session (handler order = `-e` order).
-3. Mode extensions are mutually exclusive by construction: solo adds
+3. `clarify-gate.ts` then `agents-view.ts` are always loaded after
+   `capabilities.ts`; `agents-view.ts` registers the `/agents` command and
+   `resolvedAgentsView` in every mode.
+4. Mode extensions are mutually exclusive by construction: solo adds
    `status-line.ts`, chain adds `agent-chain.ts`, team adds `agent-team.ts`,
    fusion adds the vendored `fusion-harness` with `--fh-config`. The launcher
    never loads two, so `setActiveTools` calls cannot conflict.
-4. `--skill` paths come only from `add_named_skill` (profile names resolved
+5. Herdr worker members (`PI_VIDA_WORKER`) get a reduced base argv instead:
+   `damage-control-continue.ts`, `capabilities.ts`, `team-member.ts`, and
+   `--no-skills`, with no boot-config, clarify-gate, status-line, or
+   agent-team.
+6. `--skill` paths come only from `add_named_skill` (profile names resolved
    under the skills home) and `add_overlay_skill` (overlay `extra_skills` and
    `tracker.skill`, resolved against the target repo cwd, warn-only).
 
@@ -156,6 +173,8 @@ render UI check `ctx.hasUI` and no-op in print/JSON mode.
 | `status-line.ts` | Turn counter footer, solo mode only. | Chain/team modes |
 | `agent-chain.ts` | `/chain`, `/chain-list`, `run_chain` tool. Chain YAML discovery: cwd `.pi/agents/` → `profiles/<vida>/agents/` → shared `profiles/agents/`, first file wins. | Team dispatch |
 | `agent-team.ts` | Dispatcher-only primary: `setActiveTools([dispatch_agent])` at `session_start` (pi 0.85 forbids action methods during load). Only members of the active team dispatch. | Chain execution |
+| `agents-view.ts` | `/agents` command (loaded in every mode) and `resolvedAgentsView`, the shared resolved-agents view behind the CLI inspector and the team list formatter. | Launch args |
+| `team-member.ts` | Herdr worker persona bootstrap; loaded only in `PI_VIDA_WORKER` member panes via the member base argv. | Primary-session tools |
 | `subagent.ts` + `subagentHelpers.ts` | `subagent` tool (single/parallel/chain modes) and `buildChildArgv`, the single place child `pi` argv is built. Not loaded by `pi-vida` yet. | Primary-session tools |
 | `installed-skills.ts` | `.dotskills-manifest.json` schema check and pack→paths resolution CLI used by `resolve_pack_paths`. | Installing skills |
 | `agentScan.ts` | Agent/command/skill discovery for agent defs: `profiles/<vida>/agents/` → `profiles/agents/` → cwd `.pi/` → `.claude/.gemini/.codex` fallbacks, first-wins on name. Shared by `cross-agent`, `system-select`, `subagent`, `agent-chain`. Note: the chain *file* itself uses `resolveChainFile`, whose order puts the project `.pi/agents/` first. | Launch policy |
@@ -174,8 +193,8 @@ overrides), keyed on the child's agent name (`planner`, `builder`, `reviewer`,
 
 ## Trust boundaries and invariants
 
-- **INV-skills** (above) is the load-bearing rule. Enforced by `bin/pi-vida`
-  argv construction and `buildChildArgv`.
+- **INV-skills** (above) is the load-bearing rule. Enforced by
+  `libexec/pi-vida-launch` argv construction and `buildChildArgv`.
 - **Profiles and overlay are untrusted input.** Both parse through strict
   validators in `capabilities.ts`; malformed YAML exits 2 before `pi` starts.
 - **The manifest is untrusted.** `installed-skills.ts` rejects non-schema-1
@@ -200,8 +219,11 @@ overrides), keyed on the child's agent name (`planner`, `builder`, `reviewer`,
 
 | Concept | Authoritative file |
 |---|---|
-| Launch argv, fail-closed rules, doctor | `bin/pi-vida` |
-| Profile schema (mantra/packs/tracker/models/thinking) | `profiles/*.yaml`, `read_profile` in `bin/pi-vida` |
+| Wrapper (Rust-vs-bash dispatch) | `bin/pi-vida` |
+| Rust launcher (gum flow, `--host cline\|kilo\|claude`) | `crates/pi-vida/src/cli.rs`, `crates/pi-vida/src/hosts.rs` |
+| Launch argv, fail-closed rules, doctor | `libexec/pi-vida-launch` |
+| Profile schema (mantra/packs/tracker/models/thinking) | `profiles/*.yaml`, `read_profile` in `libexec/pi-vida-launch` |
+| Resolved agents view (`/agents`, inspector) | `extensions/agents-view.ts` |
 | Overlay schema and merge | `extensions/capabilities.ts` |
 | Pack manifest resolution | `extensions/installed-skills.ts` |
 | Skill install sources | `packs.yaml`, `scripts/skills-bootstrap.ts` |

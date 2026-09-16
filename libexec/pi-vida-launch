@@ -64,10 +64,31 @@ check_excludesfile() {
 # doctor <vida> preflight for one profile. strict=1 fails closed (exit 2) on
 # missing mantra/tracker paths and malformed manifests — the same contract
 # the launcher enforces. strict=0 (bare `doctor` sweep over every profile)
-# accumulates gaps into the caller's `sweep_missing` map instead of warning
-# per life — the same mantra skill is required by every vida, so per-vida
-# warnings would repeat it. Mutates `optional` and `sweep_missing` via bash
-# dynamic scope.
+# accumulates gaps into the caller's `sweep_missing` registry instead of
+# warning per life — the same mantra skill is required by every vida, so
+# per-vida warnings would repeat it. Mutates `optional` and `sweep_missing`
+# via bash dynamic scope.
+#
+# bash 3.2 (macOS /bin/bash) has no associative arrays, so `sweep_missing`
+# is a newline registry of "key|vida vida " lines instead of a map.
+sweep_add() {
+  local key="$1" life="$2"
+  local line out="" found=""
+  while IFS= read -r line; do
+    [[ -z "${line}" ]] && continue
+    if [[ "${line%%|*}" == "${key}" ]]; then
+      out+="${key}|${line#*|}${life} "$'\n'
+      found=1
+    else
+      out+="${line}"$'\n'
+    fi
+  done <<<"${sweep_missing}"
+  if [[ -z "${found}" ]]; then
+    out+="${key}|${life} "$'\n'
+  fi
+  sweep_missing="${out}"
+}
+
 doctor_check_life() {
   local life="$1" strict="$2" skills_home="$3" root="$4"
   local doc_profile="${root}/profiles/${life}.yaml"
@@ -99,7 +120,7 @@ doctor_check_life() {
             printf 'pi-vida: missing required %s %s (%s)\n' "${kind}" "${name}" "${skills_home}/${name}" >&2
             exit 2
           fi
-          sweep_missing["${kind} ${name}"]+="${life} "
+          sweep_add "${kind} ${name}" "${life}"
         fi
         ;;
       pack)
@@ -111,7 +132,7 @@ doctor_check_life() {
             doctor_warn "missing pack ${name} (${skills_home}/${name})"
             optional=$((optional + 1))
           else
-            sweep_missing["pack ${name}"]+="${life} "
+            sweep_add "pack ${name}" "${life}"
           fi
         fi
         ;;
@@ -791,17 +812,20 @@ main() {
         # the sweep is advisory because users may only run a subset of
         # vidas. Deduped: one warning per skill, lives listed.
         local sweep_profile sweep_name
-        local -A sweep_missing=()
+        local sweep_missing=""
         for sweep_profile in "${root}"/profiles/*.yaml; do
           [[ -e "${sweep_profile}" ]] || continue
           sweep_name="${sweep_profile##*/}"; sweep_name="${sweep_name%.yaml}"
           doctor_check_life "${sweep_name}" 0 "${skills_home}" "${root}"
         done
-        local sweep_key
-        for sweep_key in "${!sweep_missing[@]}"; do
-          doctor_warn "missing ${sweep_key} (vidas: ${sweep_missing[${sweep_key}]% }) — run just skills"
+        local sweep_key sweep_line sweep_vidas
+        while IFS= read -r sweep_line; do
+          [[ -z "${sweep_line}" ]] && continue
+          sweep_key="${sweep_line%%|*}"
+          sweep_vidas="${sweep_line#*|}"; sweep_vidas="${sweep_vidas% }"
+          doctor_warn "missing ${sweep_key} (vidas: ${sweep_vidas}) — run just skills"
           optional=$((optional + 1))
-        done
+        done <<<"${sweep_missing}"
       fi
 
       if ! command -v just >/dev/null 2>&1; then

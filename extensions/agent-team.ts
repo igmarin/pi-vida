@@ -50,6 +50,7 @@ import {
 	formatUsageStats,
 	getFinalOutput,
 	isFailedResult,
+	killChildTree,
 	KILL_GRACE_MS,
 	resultOutput,
 	runSingleAgent,
@@ -195,24 +196,12 @@ async function runHerdr(
 	let stderr = "";
 	let closed = false;
 	let killTimer: ReturnType<typeof setTimeout> | null = null;
-	const signalTree = (sig: NodeJS.Signals) => {
-		try {
-			if (process.platform !== "win32" && proc.pid) process.kill(-proc.pid, sig);
-			else proc.kill(sig);
-		} catch {
-			try {
-				proc.kill(sig);
-			} catch {
-				/* ignore */
-			}
-		}
-	};
 	const killChild = () => {
-		signalTree("SIGTERM");
+		killChildTree(proc, "SIGTERM");
 		if (killTimer) clearTimeout(killTimer);
 		killTimer = setTimeout(() => {
 			killTimer = null;
-			if (!closed) signalTree("SIGKILL");
+			if (!closed) killChildTree(proc, "SIGKILL");
 		}, KILL_GRACE_MS);
 	};
 	const onAbort = () => killChild();

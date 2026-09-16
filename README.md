@@ -1,6 +1,6 @@
 # pi-vida
 
-`pi-vida` launches a **vida** (a persona profile — skills, safety gate, and ticket tracker for one language: `ruby`, `rust`, `python`, `elixir`) inside **your** repo, on the coding agent host you already use:
+`pi-vida` launches a **vida** (a persona profile with skills, a safety gate, and a ticket tracker for one language: `ruby`, `rust`, `python`, `elixir`) inside your repo, on the coding agent host you already use:
 
 ```sh
 cd path/to/your/repo
@@ -9,7 +9,7 @@ pi-vida ruby --host kilo   # Kilo: install + project the same skills, run kilo
 pi-vida                    # interactive host/vida menu — needs gum
 ```
 
-- **No Pi? No problem:** `pi-vida --host cline|kilo|claude` installs the vida's skills and projects them into the host's folder (`~/.agents/skills`, `~/.kilo/skills`, `~/.claude/skills`), then execs the host or prints a start hint. Guide: [docs/how-to.md](docs/how-to.md#use-with-cline-or-kilo).
+- **Non-Pi hosts:** `pi-vida --host cline|kilo|claude` installs the vida's skills and projects them into the host's folder (`~/.agents/skills`, `~/.kilo/skills`, `~/.claude/skills`), then execs the host or prints a start hint. Guide: [docs/how-to.md](docs/how-to.md#use-with-cline-or-kilo).
 - **Interactive:** no arguments on a terminal opens the host/vida/mode menu; needs [gum](https://github.com/charmbracelet/gum) (a missing gum exits 2 with an install hint). Without gum, run the Pi path directly (`pi-vida ruby`) or provision skills with `just skills`.
 - **Pi-only:** `pi-vida ruby chain` (plan → build → review), `pi-vida ruby team` (dispatch to specialists), `pi-vida doctor` (health check), fusion stacks.
 - **First time:** clone this repo, then `just install` + `just skills` ([Install](#install)); Pi hosts also need `npm i -g @earendil-works/pi-coding-agent`, non-Pi hosts also need `just build` (the Rust launcher).
@@ -40,10 +40,10 @@ Aliases: `rails` → `ruby`, `phoenix` → `elixir`. `ecto` and `rails-python` a
 
 On the first `pi-vida` launch in a repo, two things happen:
 
-- **Clarify gate** — `write`/`edit` are blocked until you run `/clarify` to accept the prompt. Read-only tools stay available.
-- **Boot config wizard** — when the repo has no `.pi/capabilities.yaml`, it walks the six capability toggles (graphify, codegraph, serena, rs-guard, obscura, playwright) and optional per-role model/thinking defaults (solo, planner, builder, reviewer, researcher), then writes the overlay only after you confirm. A cancelled prompt skips the write; no UI skips the wizard entirely.
+- **Clarify gate**: `write`/`edit` are blocked until you run `/clarify` to accept the prompt. Read-only tools stay available.
+- **Boot config wizard**: when the repo has no `.pi/capabilities.yaml`, it walks the six capability toggles (graphify, codegraph, serena, rs-guard, obscura, playwright) and optional per-role model/thinking defaults (solo, planner, builder, reviewer, researcher), then writes the overlay only after you confirm. A cancelled prompt skips the write; no UI skips the wizard entirely.
 
-Note: "clarify" names three different things (the `/clarify` command, the `clarify` skill, the `requirements-clarifier` skill) — see [docs/how-to.md](docs/how-to.md#first-launch-in-a-target-repo). The overlay's solo `models`/`thinking` become `pi --model`/`--thinking` on later launches; chain/team/subagent children dispatch with the per-role values keyed on the child's agent name. Details: [CONTEXT.md](CONTEXT.md) (**Boot Config**, **Role**).
+Note: "clarify" names three different things (the `/clarify` command, the `clarify` skill, the `requirements-clarifier` skill). See [docs/how-to.md](docs/how-to.md#first-launch-in-a-target-repo). The overlay's solo `models`/`thinking` become `pi --model`/`--thinking` on later launches; chain/team/subagent children dispatch with the per-role values keyed on the child's agent name. Details: [CONTEXT.md](CONTEXT.md) (**Boot Config**, **Role**).
 
 ## Install
 
@@ -54,22 +54,22 @@ just skills                              # provision ~/.agents/skills from packs
 just install-smoke                       # verify the symlink + --dry-run through it
 ```
 
-Skills resolve to directories under `~/.agents/skills`. `just skills` clones the repos in `packs.yaml`, symlinks each skill in, and writes `.dotskills-manifest.json` — without it, launch exits 2 on a missing required path (packs only warn). Full setup: [docs/how-to.md](docs/how-to.md#install).
+Skills resolve to directories under `~/.agents/skills`. `just skills` clones the repos in `packs.yaml`, symlinks each skill in, and writes `.dotskills-manifest.json`. Without it, launch exits 2 on a missing required path (packs only warn). Full setup: [docs/how-to.md](docs/how-to.md#install).
 
 ## Herdr (host)
 
-Herdr is the host for parallel work: workspaces, panes, `herdr worktree`, and `herdr agent start --kind pi`. Herdr launches `pi-vida` itself; extensions never call `herdr` — the prompt-only team dispatch below is the one exception. Example: `herdr agent start reviewer --kind pi -- pi-vida ruby`. Inside Herdr, `pi-vida <vida> team` goes pane-native (INV-herdr, amends #19): the launcher splits one pane per team member (`herdr agent start <member> --kind pi -- pi-vida <vida> solo`) and `dispatch_agent` prompts members with `herdr agent prompt --wait` — only members the launcher started, only while `HERDR_ENV=1`. Outside Herdr team mode stays on hidden children + kill.
+Herdr is the host for parallel work: workspaces, panes, `herdr worktree`, and `herdr agent start --kind pi`. Herdr launches `pi-vida` itself; extensions never call `herdr`, and the prompt-only team dispatch below is the one exception. Example: `herdr agent start reviewer --kind pi -- pi-vida ruby`. Inside Herdr, `pi-vida <vida> team` goes pane-native (INV-herdr, amends #19): the launcher splits one pane per team member (`herdr agent start <member> --kind pi -- pi-vida <vida> solo`) and `dispatch_agent` prompts members with `herdr agent prompt --wait`, but only members the launcher started and only while `HERDR_ENV=1`. Outside Herdr team mode stays on hidden children + kill.
 
 The `herdr` skill is on the mantra allowlist of every vida. It no-ops unless `HERDR_ENV=1`, so a plain terminal is unaffected. `pi-vida doctor` warns (never fails) when `herdr` is not on PATH. Prefer `herdr worktree` when already inside Herdr; `stacked-pr-worktree-workflow` stays for gh-stack PR topology.
 
 ## Configuration
 
-- `CONTEXT.md` — domain glossary (vidas, overlay, mantra).
-- `ARCHITECTURE.md` — how the launcher, profiles, skills home, and extensions connect (with diagrams).
-- `AGENTS.md` — project rules; auto-loaded by rs-guard as supplemental context.
-- `.github/review-prompt.md` — the review prompt used by both local and CI runs.
-- `.reviewer.toml` — rs-guard configuration (provider, model, timeout).
-- `.rs-guardignore` — paths excluded from review diffs.
+- `CONTEXT.md`: domain glossary (vidas, overlay, mantra).
+- `ARCHITECTURE.md`: how the launcher, profiles, skills home, and extensions connect (with diagrams).
+- `AGENTS.md`: project rules; auto-loaded by rs-guard as supplemental context.
+- `.github/review-prompt.md`: the review prompt used by both local and CI runs.
+- `.reviewer.toml`: rs-guard configuration (provider, model, timeout).
+- `.rs-guardignore`: paths excluded from review diffs.
 
 Harness profiles and project overlays are **YAML** (same parser as damage-control rules). See CONTEXT.md.
 
@@ -85,13 +85,13 @@ just ext-system-select  # /system persona from discovered agents (profiles, .pi,
 just ext-damage-control # continue-variant safety rules
 ```
 
-`just smoke` ends with `just smoke-rails fixture`: it runs `pi-vida --dry-run ruby` from a synthetic Rails repo and asserts the ruby pack argv — deterministic by default. `just smoke-rails` manually prefers a real repo discovered under `~/Developer` (`Gemfile` containing `gem "rails"`); `just smoke-rails ~/path/to/app` uses that repo and fails loudly (exit 1) if it has no `Gemfile`.
+`just smoke` ends with `just smoke-rails fixture`: it runs `pi-vida --dry-run ruby` from a synthetic Rails repo and asserts the ruby pack argv; deterministic by default. `just smoke-rails` manually prefers a real repo discovered under `~/Developer` (`Gemfile` containing `gem "rails"`); `just smoke-rails ~/path/to/app` uses that repo and fails loudly (exit 1) if it has no `Gemfile`.
 
 ### AI code review
 
 This repository uses [rs-guard](https://github.com/nebulaideas/rs-guard) for automated code review, both as a pre-commit hook and as a GitHub Actions workflow on pull requests.
 
-[open-code-review](https://github.com/alibaba/open-code-review) (`ocr`) is the default interactive review tool. No global npm install needed — run it on demand:
+[open-code-review](https://github.com/alibaba/open-code-review) (`ocr`) is the default interactive review tool. No global npm install needed; run it on demand:
 
 ```sh
 npx -y @alibaba-group/open-code-review
@@ -132,4 +132,4 @@ The workflow `.github/workflows/rs-guard-review.yml` runs on every non-draft pul
 
 ## Acknowledgments
 
-This harness grew out of [IndyDevDan (disler)](https://github.com/disler)'s YouTube teaching on agent harnesses — his earlier work shaped the design, and `extensions/fusion-harness/` is vendored (MIT) from his [fusion-harness](https://github.com/disler/fusion-harness).
+`extensions/fusion-harness/` is vendored (MIT) from [IndyDevDan (disler)](https://github.com/disler)'s [fusion-harness](https://github.com/disler/fusion-harness). His agent-harness teaching shaped the earlier design.

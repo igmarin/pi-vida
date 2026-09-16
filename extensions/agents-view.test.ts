@@ -141,14 +141,18 @@ test("invalid vida fails closed: empty discovery", () => {
 
 test("case-differing shadow still prints under its winner", () => {
 	seed();
+	// A fresh directory: on case-insensitive volumes (default macOS APFS)
+	// writing Builder.yaml beside the seeded builder.yaml would clobber it
+	// and keep the lowercase on-disk name, failing the path assertion.
+	mkdirSync(join(cwd, ".claude/agents"), { recursive: true });
 	writeFileSync(
-		join(cwd, ".pi/agents/Builder.yaml"),
+		join(cwd, ".claude/agents/Builder.yaml"),
 		"name: Builder\ndescription: project\nbody: |\n  PROJECT\n",
 	);
 	const v = resolvedAgentsView(cwd, "ruby", import.meta.url, home);
 	expect(v.shadowed.map((s) => s.name)).toContain("Builder");
 	const out = formatAgentsView(v);
-	expect(out).toContain(`  shadows: ${join(cwd, ".pi/agents/Builder.yaml")}`);
+	expect(out).toContain(`  shadows: ${join(cwd, ".claude/agents/Builder.yaml")}`);
 });
 
 test("relative cwd yields absolute agent paths and starred order", () => {

@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expandArgs } from "./argExpand.ts";
-import { canonicalLife, collectAgents, discover } from "./agentScan.ts";
+import { canonicalLife, collectAgents, discover, harnessRoot } from "./agentScan.ts";
 
 const tmp = join(tmpdir(), `mpa-scan-${process.pid}`);
 const harness = join(tmp, "harness");
@@ -60,6 +60,41 @@ test("canonicalLife aliases and rejects rails-python", () => {
 	expect(canonicalLife("python")).toBe("python");
 	expect(canonicalLife("rails-python")).toBeUndefined();
 	expect(canonicalLife("ecto")).toBeUndefined();
+});
+
+test("harnessRoot resolves from env or import.meta.url", () => {
+	// Test env precedence: PI_VIDA_HOME > PI_LIFE_HOME > MY_PI_AGENT_HOME
+	const testRoot = join(tmpdir(), `harness-root-test-${process.pid}`);
+	mkdirSync(testRoot, { recursive: true });
+	const prevVida = process.env.PI_VIDA_HOME;
+	const prevLife = process.env.PI_LIFE_HOME;
+	const prevMine = process.env.MY_PI_AGENT_HOME;
+
+	try {
+		process.env.PI_VIDA_HOME = testRoot;
+		expect(harnessRoot()).toBe(testRoot);
+
+		delete process.env.PI_VIDA_HOME;
+		process.env.PI_LIFE_HOME = testRoot;
+		expect(harnessRoot()).toBe(testRoot);
+
+		delete process.env.PI_LIFE_HOME;
+		process.env.MY_PI_AGENT_HOME = testRoot;
+		expect(harnessRoot()).toBe(testRoot);
+
+		// Test fallback to import.meta.url parent
+		delete process.env.MY_PI_AGENT_HOME;
+		const fallback = harnessRoot(import.meta.url);
+		expect(fallback).toContain("pi-vida");
+	} finally {
+		rmSync(testRoot, { recursive: true, force: true });
+		if (prevVida === undefined) delete process.env.PI_VIDA_HOME;
+		else process.env.PI_VIDA_HOME = prevVida;
+		if (prevLife === undefined) delete process.env.PI_LIFE_HOME;
+		else process.env.PI_LIFE_HOME = prevLife;
+		if (prevMine === undefined) delete process.env.MY_PI_AGENT_HOME;
+		else process.env.MY_PI_AGENT_HOME = prevMine;
+	}
 });
 
 test("first-wins: harness, then .pi, then .claude cwd, then home", () => {
