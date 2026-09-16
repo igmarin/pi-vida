@@ -414,11 +414,15 @@ await Bun.sleep(1e12);
 		const prevPath = process.env.PATH;
 		const prevTimeout = process.env.PI_CHILD_TIMEOUT_MS;
 		const prevLife = process.env.PI_LIFE;
+		const prevVida = process.env.PI_VIDA;
 		const prevHome = process.env.MY_PI_AGENT_HOME;
+		const prevVidaHome = process.env.PI_VIDA_HOME;
 		process.env.PATH = `${dir}${delimiter}${prevPath ?? ""}`;
 		process.env.PI_CHILD_TIMEOUT_MS = "60000";
 		delete process.env.PI_LIFE;
+		delete process.env.PI_VIDA;
 		delete process.env.MY_PI_AGENT_HOME;
+		delete process.env.PI_VIDA_HOME;
 		try {
 			return await fn({ pidFile });
 		} finally {
@@ -429,8 +433,12 @@ await Bun.sleep(1e12);
 			else process.env.PI_CHILD_TIMEOUT_MS = prevTimeout;
 			if (prevLife === undefined) delete process.env.PI_LIFE;
 			else process.env.PI_LIFE = prevLife;
+			if (prevVida === undefined) delete process.env.PI_VIDA;
+			else process.env.PI_VIDA = prevVida;
 			if (prevHome === undefined) delete process.env.MY_PI_AGENT_HOME;
 			else process.env.MY_PI_AGENT_HOME = prevHome;
+			if (prevVidaHome === undefined) delete process.env.PI_VIDA_HOME;
+			else process.env.PI_VIDA_HOME = prevVidaHome;
 			rmSync(dir, { recursive: true, force: true });
 		}
 	};

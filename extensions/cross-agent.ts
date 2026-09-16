@@ -2,7 +2,7 @@
  * Cross-Agent — register commands/skills from other coding agents.
  *
  * /name from commands/*.md, /skill:name from skills/. Agents listed only.
- * Search: profiles/<life>/agents, profiles/agents, cwd .pi/, then
+ * Search: profiles/<vida>/agents, profiles/agents, cwd .pi/, then
  * .claude/.gemini/.codex (cwd, then $HOME). First-wins on name.
  *
  * Usage: pi -e extensions/cross-agent.ts

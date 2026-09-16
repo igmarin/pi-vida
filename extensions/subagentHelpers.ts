@@ -230,6 +230,8 @@ export function buildChildArgv(harnessRoot: string, opts: BuildChildArgvOptions)
 }
 
 export function resolveHarnessRoot(): string {
+	if (process.env.PI_VIDA_HOME) return process.env.PI_VIDA_HOME;
+	if (process.env.PI_LIFE_HOME) return process.env.PI_LIFE_HOME;
 	if (process.env.MY_PI_AGENT_HOME) return process.env.MY_PI_AGENT_HOME;
 	return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 }

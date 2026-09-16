@@ -1,7 +1,7 @@
 /**
  * System Select — /system picks a persona from discovered agents.
  *
- * Search: profiles/<life>/agents/ (YAML), shared profiles/agents/, cwd .pi/agents/,
+ * Search: profiles/<vida>/agents/ (YAML), shared profiles/agents/, cwd .pi/agents/,
  * then .claude/.gemini/.codex (cwd, then $HOME). First-wins on name. Body is prepended
  * to Pi's default instructions; tools restricted if the agent lists them.
  *
@@ -53,7 +53,7 @@ export default function (pi: ExtensionAPI) {
 		description: "Select a system prompt from discovered agents",
 		handler: async (args, ctx) => {
 			if (allAgents.length === 0) {
-				if (ctx.hasUI) ctx.ui.notify("No agents found in profiles/<life>/agents or .*/agents", "warning");
+				if (ctx.hasUI) ctx.ui.notify("No agents found in profiles/<vida>/agents or .*/agents", "warning");
 				return;
 			}
 

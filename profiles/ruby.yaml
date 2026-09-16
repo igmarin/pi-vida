@@ -1,5 +1,5 @@
-# ruby life (Rails). Packs are allowlists under ~/.agents/skills; not vendored here.
-life: ruby
+# ruby vida (Rails). Packs are allowlists under ~/.agents/skills; not vendored here.
+vida: ruby
 tracker: github-issue
 packs:
   - agnostic-planning-skills

@@ -460,7 +460,7 @@ describe("buildChildArgv — coverage of chain-mode args", () => {
 	// happens in the glue (subagent.ts) before calling buildChildArgv.
 	// Here we verify that the {previous} token (if it ever leaked into a task)
 	// is passed through verbatim — no special handling in the builder.
-	const root = "/tmp/pi-life-test";
+	const root = "/tmp/pi-vida-test";
 	test("{previous} placeholder in task is passed verbatim to the child", () => {
 		const argv = buildChildArgv(root, { task: "summarize: {previous}" });
 		expect(argv[argv.length - 1]).toBe("Task: summarize: {previous}");

@@ -1,6 +1,6 @@
 /**
  * Discover commands, skills, and agents.
- * Order: profiles/<life>/agents/ (YAML), shared profiles/agents/, cwd .pi/,
+ * Order: profiles/<vida>/agents/ (YAML), shared profiles/agents/, cwd .pi/,
  * then .claude/.gemini/.codex (cwd, then $HOME). First-wins on name collision.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -37,7 +37,7 @@ export function canonicalLife(raw: string | undefined): string | undefined {
 }
 
 function harnessRoot(extFileUrl: string): string {
-	return process.env.MY_PI_AGENT_HOME || join(dirname(fileURLToPath(extFileUrl)), "..");
+	return process.env.PI_VIDA_HOME || process.env.PI_LIFE_HOME || process.env.MY_PI_AGENT_HOME || join(dirname(fileURLToPath(extFileUrl)), "..");
 }
 
 function str(v: unknown): string {
@@ -189,9 +189,9 @@ function take<T extends { name: string }>(items: T[], seen: Set<string>, key = (
 
 export function discover(cwd: string, extFileUrl: string, home = homedir()): SourceGroup[] {
 	const root = harnessRoot(extFileUrl);
-	const rawLife = process.env.PI_LIFE;
+	const rawLife = process.env.PI_VIDA || process.env.PI_LIFE;
 	const life = rawLife ? canonicalLife(rawLife) : undefined;
-	if (rawLife && !life) return []; // invalid PI_LIFE fails closed, not broad
+	if (rawLife && !life) return []; // invalid PI_VIDA / PI_LIFE fails closed, not broad
 	const lives = life ? [life] : [...LIVES];
 	const specs: { source: string; commands?: string; skills?: string; agents: string }[] = [
 		...lives.map((l) => ({

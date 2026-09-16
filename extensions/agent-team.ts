@@ -5,7 +5,7 @@
  *
  * This file exports `default function (pi: ExtensionAPI)` which restricts the
  * primary session to a single tool, `dispatch_agent`, and registers a
- * `/team-list` command. Loaded ONLY via `pi-life <life> team` — mutually
+ * `/team-list` command. Loaded ONLY via `pi-vida <vida> team` — mutually
  * exclusive with chain (agent-chain.ts) and tilldone (status-line.ts), which
  * the launcher simply does not load in team mode (`setActiveTools` conflict).
  *
@@ -21,7 +21,7 @@
  *
  * Teams live under the `teams:` key of the same `agent-chain.yaml` file the
  * chains use, so `resolveChainFile` precedence applies unchanged:
- * cwd `.pi/agents/` → `profiles/<life>/agents/` → shared `profiles/agents/`.
+ * cwd `.pi/agents/` → `profiles/<vida>/agents/` → shared `profiles/agents/`.
  * Active team: `PI_TEAM` env when set, else the `default` team, else the first
  * defined team. `/team-list` shows what is available.
  */
@@ -52,7 +52,7 @@ export function loadedTeams(cwd: string): {
 	source: string;
 	teams: Map<string, TeamDef>;
 } {
-	const file = resolveChainFile(cwd, import.meta.url, process.env.PI_LIFE);
+	const file = resolveChainFile(cwd, import.meta.url, process.env.PI_VIDA || process.env.PI_LIFE);
 	if (!file)
 		throw new Error(
 			"No agent-chain.yaml found in .pi/agents or profiles/agents",

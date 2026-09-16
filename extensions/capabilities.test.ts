@@ -4,7 +4,7 @@
  * The overlay lives at `<cwd>/.pi/capabilities.yaml` and is parsed strictly:
  * missing file ≡ all off; malformed YAML or schema ⇒ OverlayParseError.
  *
- * bin/pi-life parses the overlay (one Bun invocation) and serializes it into
+ * bin/pi-vida parses the overlay (one Bun invocation) and serializes it into
  * the PI_OVERLAY env var. The extension deserializes and rewrites the
  * system prompt. Tests cover both the parser and the serializer round-trip.
  */

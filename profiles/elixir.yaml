@@ -1,5 +1,5 @@
-# elixir life. github-issue is omitted unless a project overlay enables it (#11 / #17).
-life: elixir
+# elixir vida. github-issue is omitted unless a project overlay enables it (#11 / #17).
+vida: elixir
 packs:
   - agnostic-planning-skills
   - elixir-phoenix-skills

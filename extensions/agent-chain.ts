@@ -5,7 +5,7 @@
  *
  * This file exports `default function (pi: ExtensionAPI)` which registers the
  * `/chain` and `/chain-list` commands and the `run_chain` tool. Loaded via
- * `pi-life <life> chain` (mutually exclusive with team and status-line by
+ * `pi-vida <vida> chain` (mutually exclusive with team and status-line by
  * launcher construction).
  *
  * ## Chain discovery
@@ -17,7 +17,7 @@
  * project can override the harness default without polluting the repo):
  *
  *   1. cwd `.pi/agents/agent-chain.yaml`      (project override)
- *   2. `profiles/<life>/agents/agent-chain.yaml`
+ *   2. `profiles/<vida>/agents/agent-chain.yaml`
  *   3. `profiles/agents/agent-chain.yaml`     (shared harness default)
  *
  * ## Schema
@@ -41,7 +41,7 @@
  *
  * A step may set `rs_guard: true` (issue #7, chain-level by design). When the
  * project overlay enables the `rs-guard` capability (PI_OVERLAY, written by
- * bin/pi-life) the chain shells out to `rs-guard --diff-file` on `git diff
+ * bin/pi-vida) the chain shells out to `rs-guard --diff-file` on `git diff
  * HEAD` before the step's agent runs; the agent receives the findings and must
  * verify them, not re-implement the review. Overlay off or empty diff → the
  * agent runs skills-only. Overlay on + missing binary, or a non-zero rs-guard
@@ -269,6 +269,8 @@ function harnessChainPath(
 	lifeRaw: string | null,
 ): { source: string; path: string }[] {
 	const root =
+		process.env.PI_VIDA_HOME ||
+		process.env.PI_LIFE_HOME ||
 		process.env.MY_PI_AGENT_HOME ||
 		join(dirname(fileURLToPath(extFileUrl)), "..");
 	const life = chainLife(lifeRaw || undefined);
@@ -323,7 +325,7 @@ export function renderStepTask(
 // ---------------------------------------------------------------------------
 
 /**
- * Whether the overlay payload (PI_OVERLAY JSON, written by bin/pi-life)
+ * Whether the overlay payload (PI_OVERLAY JSON, written by bin/pi-vida)
  * enables the `rs-guard` capability. Missing/empty payload or a malformed
  * payload counts as off — the launcher never writes malformed JSON, and
  * capabilities.ts already surfaces parse errors at prompt time.
@@ -557,7 +559,7 @@ function loadedChains(cwd: string): {
 	source: string;
 	chains: Map<string, ChainDef>;
 } {
-	const file = resolveChainFile(cwd, import.meta.url, process.env.PI_LIFE);
+	const file = resolveChainFile(cwd, import.meta.url, process.env.PI_VIDA || process.env.PI_LIFE);
 	if (!file)
 		throw new ChainError(
 			"No agent-chain.yaml found in .pi/agents or profiles/agents",
@@ -590,7 +592,7 @@ export default function (pi: ExtensionAPI) {
 
 	pi.registerCommand("chain-list", {
 		description:
-			"List available agent chains (YAML: .pi/agents, profiles/<life>/agents, profiles/agents)",
+			"List available agent chains (YAML: .pi/agents, profiles/<vida>/agents, profiles/agents)",
 		handler: async (_args, ctx) => {
 			try {
 				const { source, chains } = loadedChains(ctx.cwd);

@@ -5,15 +5,16 @@ root := justfile_directory()
 default:
     @just --list
 
-# Install JS deps and symlink pi-life onto PATH
+# Install JS deps and symlink pi-vida onto PATH
 install:
     #!/usr/bin/env bash
     set -euo pipefail
     bun install
     : "${HOME:?HOME must be set}"
     mkdir -p "${HOME}/.local/bin"
+    ln -sfn "{{root}}/bin/pi-vida" "${HOME}/.local/bin/pi-vida"
     ln -sfn "{{root}}/bin/pi-life" "${HOME}/.local/bin/pi-life"
-    echo "pi-life -> {{root}}/bin/pi-life"
+    echo "pi-vida -> {{root}}/bin/pi-vida"
 
 # Provision PI_SKILLS_HOME from packs.yaml: clone pack/skill repos, symlink
 # skills into ~/.agents/skills, write .dotskills-manifest.json. Idempotent.
@@ -24,9 +25,9 @@ skills:
 install-smoke:
     #!/usr/bin/env bash
     set -euo pipefail
-    link="${HOME:?HOME must be set}/.local/bin/pi-life"
+    link="${HOME:?HOME must be set}/.local/bin/pi-vida"
     test -L "${link}" || { echo "install-smoke: ${link} missing or not a symlink (run just install)" >&2; exit 1; }
-    test "$(readlink "${link}")" = "{{root}}/bin/pi-life" || { echo "install-smoke: ${link} -> $(readlink "${link}"), expected {{root}}/bin/pi-life" >&2; exit 1; }
+    test "$(readlink "${link}")" = "{{root}}/bin/pi-vida" || { echo "install-smoke: ${link} -> $(readlink "${link}"), expected {{root}}/bin/pi-vida" >&2; exit 1; }
     tmp="$(mktemp -d)"
     trap 'rm -rf "${tmp}"' EXIT
     for name in i-have-adhd ponytail ponytail-review deslop clarify requirements-clarifier tdd herdr github-issue; do
@@ -44,7 +45,7 @@ smoke:
     #!/usr/bin/env bash
     set -euo pipefail
     root="{{root}}"
-    bin="${root}/bin/pi-life"
+    bin="${root}/bin/pi-vida"
     "$bin" --help >/dev/null
     tmp="$(mktemp -d)"
     trap 'rm -rf "${tmp}"' EXIT
@@ -125,12 +126,17 @@ smoke:
     ! grep -q -- "elixir-phoenix-skills" <<<"${ruby_out}"
     [[ "${rails_out}" == "${ruby_out}" ]]
 
+    # Issue #75: pi-life shim warns once on stderr and execs the same argv.
+    shim_out="$("${root}/bin/pi-life" --dry-run ruby 2>"${tmp}/shim.err")"
+    [[ "$(head -n1 "${tmp}/shim.err")" == "pi-life is now pi-vida" ]]
+    [[ "${shim_out}" == "${ruby_out}" ]]
+
     echo "${python_out}" | grep -q -- "--no-skills"
     echo "${python_out}" | grep -q -- "--skill ${tmp}/ponytail"
     echo "${python_out}" | grep -q -- "--skill ${tmp}/herdr"
     ! grep -q -- "rails-agent-skills" <<<"${python_out}"
     echo "${python_out}" | grep -q -- "--skill ${tmp}/github-issue"
-    # Issue #76: memory extension is gone; no life/mode may load it.
+    # Issue #76: memory extension is gone; no vida/mode may load it.
     for out in "${rust_out}" "${elixir_out}" "${ruby_out}" "${python_out}" \
                "${rust_solo_out}" "${rust_chain_out}" "${rust_team_out}"; do
       ! grep -q -- "memory.ts" <<<"${out}"
@@ -140,6 +146,41 @@ smoke:
     out="$("${bin}" rails-python 2>&1)" || status=$?
     test "${status}" -eq 2
     [[ "${out}" == *"use ruby or python"* ]]
+    [[ "${out}" == *"not a vida"* ]]
+
+    status=0
+    out="$("${bin}" nosuch 2>&1)" || status=$?
+    test "${status}" -eq 2
+    [[ "${out}" == *"unknown vida"* ]]
+
+    # Issue #75: life: still parses; vida and life set to different values exit 2.
+    legacy="$(mktemp -d)"
+    mkdir -p "${legacy}/profiles" "${legacy}/i-have-adhd"
+    printf '%s\n' '# i-have-adhd' >"${legacy}/i-have-adhd/SKILL.md"
+    printf '%s\n' 'life: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' >"${legacy}/profiles/python.yaml"
+    legacy_out="$(MY_PI_AGENT_HOME="${legacy}" PI_SKILLS_HOME="${legacy}" "${bin}" --dry-run python 2>/dev/null)"
+    echo "${legacy_out}" | grep -q -- "--skill ${legacy}/i-have-adhd"
+    rm -rf "${legacy}"
+    conflict="$(mktemp -d)"
+    mkdir -p "${conflict}/profiles"
+    printf '%s\n' 'vida: python' 'life: ruby' 'tracker: none' 'packs: []' 'mantra: []' >"${conflict}/profiles/python.yaml"
+    status=0
+    PI_VIDA_HOME="${conflict}" PI_SKILLS_HOME="${tmp}" "${bin}" --dry-run python >/dev/null 2>"${tmp}/conflict.err" || status=$?
+    test "${status}" -eq 2
+    grep -q 'vida and life both set and differ' "${tmp}/conflict.err"
+    rm -rf "${conflict}"
+
+    # Issue #84 review: PI_VIDA_HOME wins over MY_PI_AGENT_HOME (legacy fallback).
+    vidahome="$(mktemp -d)"
+    mkdir -p "${vidahome}/profiles" "${vidahome}/i-have-adhd"
+    printf '%s\n' '# i-have-adhd' >"${vidahome}/i-have-adhd/SKILL.md"
+    printf '%s\n' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' >"${vidahome}/profiles/python.yaml"
+    legacyhome="$(mktemp -d)"
+    mkdir -p "${legacyhome}/profiles"
+    printf '%s\n' 'models: solo' >"${legacyhome}/profiles/python.yaml"
+    vidahome_out="$(PI_VIDA_HOME="${vidahome}" MY_PI_AGENT_HOME="${legacyhome}" PI_SKILLS_HOME="${vidahome}" "${bin}" --dry-run python 2>"${tmp}/vidahome.err")"
+    echo "${vidahome_out}" | grep -q -- "--skill ${vidahome}/i-have-adhd"
+    rm -rf "${vidahome}" "${legacyhome}"
 
     bad="$(mktemp -d)"
     mkdir -p "${bad}/profiles"
@@ -170,7 +211,7 @@ smoke:
 
     none="$(mktemp -d)"
     mkdir -p "${none}/profiles"
-    printf '%s\n' 'life: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' >"${none}/profiles/python.yaml"
+    printf '%s\n' 'vida: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' >"${none}/profiles/python.yaml"
     mkdir -p "${tmp}/omit-tracker/i-have-adhd"
     printf '%s\n' '# i-have-adhd' >"${tmp}/omit-tracker/i-have-adhd/SKILL.md"
     none_out="$(MY_PI_AGENT_HOME="${none}" PI_SKILLS_HOME="${tmp}/omit-tracker" "${bin}" --dry-run python 2>"${tmp}/none.err")"
@@ -180,7 +221,7 @@ smoke:
 
     badmap="$(mktemp -d)"
     mkdir -p "${badmap}/profiles"
-    printf '%s\n' 'life: python' 'tracker: github-issue' 'packs: {bad: true}' 'mantra: [i-have-adhd]' >"${badmap}/profiles/python.yaml"
+    printf '%s\n' 'vida: python' 'tracker: github-issue' 'packs: {bad: true}' 'mantra: [i-have-adhd]' >"${badmap}/profiles/python.yaml"
     status=0
     MY_PI_AGENT_HOME="${badmap}" PI_SKILLS_HOME="${tmp}" "${bin}" --dry-run python >/dev/null 2>"${tmp}/badmap.err" || status=$?
     test "${status}" -eq 2
@@ -250,13 +291,13 @@ smoke:
     printf 'packs:\n  fixture-pack: %s\n' "${boot_src}" >"${boot_packs}"
     boot_home="$(mktemp -d)"
     boot_repos="$(mktemp -d)"
-    PACKS_YAML="${boot_packs}" PI_SKILLS_HOME="${boot_home}" PI_LIFE_REPOS="${boot_repos}" \
+    PACKS_YAML="${boot_packs}" PI_SKILLS_HOME="${boot_home}" PI_VIDA_REPOS="${boot_repos}" \
       bun "${root}/scripts/skills-bootstrap.ts" >/dev/null
     test -f "${boot_home}/.dotskills-manifest.json"
     test -e "${boot_home}/fixture-skill/SKILL.md"
     boot_prof="$(mktemp -d)"
     mkdir -p "${boot_prof}/profiles"
-    printf '%s\n' 'life: ruby' 'tracker: none' 'packs: [fixture-pack]' 'mantra: []' >"${boot_prof}/profiles/ruby.yaml"
+    printf '%s\n' 'vida: ruby' 'tracker: none' 'packs: [fixture-pack]' 'mantra: []' >"${boot_prof}/profiles/ruby.yaml"
     boot_cwd="$(mktemp -d)"
     boot_out="$(cd "${boot_cwd}" && MY_PI_AGENT_HOME="${boot_prof}" PI_SKILLS_HOME="${boot_home}" "${bin}" --dry-run ruby)"
     grep -q -- "--skill ${boot_home}/fixture-skill" <<<"${boot_out}"
@@ -273,7 +314,7 @@ smoke:
     status=0
     out="$(cd "${doc_life_cwd}" && PI_SKILLS_HOME="${doc_packs_home}" "${bin}" doctor ruby 2>&1)" || status=$?
     test "${status}" -eq 0
-    grep -q 'life: ruby' <<<"${out}"
+    grep -q 'vida: ruby' <<<"${out}"
     grep -q 'warning: missing pack ruby-core-skills' <<<"${out}"
     # (j2) doctor <life> with a missing required mantra path -> exit 2, same
     # message the launcher prints (doctor is a launch preflight).
@@ -307,7 +348,7 @@ smoke:
     doc_none_home="$(mktemp -d)"
     mkdir -p "${doc_none_home}/profiles" "${doc_none_home}/i-have-adhd"
     printf '%s\n' '# i-have-adhd' >"${doc_none_home}/i-have-adhd/SKILL.md"
-    printf '%s\n' 'life: ruby' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' >"${doc_none_home}/profiles/ruby.yaml"
+    printf '%s\n' 'vida: ruby' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' >"${doc_none_home}/profiles/ruby.yaml"
     status=0
     out="$(cd "${doc_life_cwd}" && MY_PI_AGENT_HOME="${doc_none_home}" PI_SKILLS_HOME="${doc_none_home}" "${bin}" doctor ruby 2>&1)" || status=$?
     test "${status}" -eq 0
@@ -315,7 +356,7 @@ smoke:
     doc_omit_home="$(mktemp -d)"
     mkdir -p "${doc_omit_home}/profiles" "${doc_omit_home}/i-have-adhd"
     printf '%s\n' '# i-have-adhd' >"${doc_omit_home}/i-have-adhd/SKILL.md"
-    printf '%s\n' 'life: ruby' 'packs: []' 'mantra: [i-have-adhd]' >"${doc_omit_home}/profiles/ruby.yaml"
+    printf '%s\n' 'vida: ruby' 'packs: []' 'mantra: [i-have-adhd]' >"${doc_omit_home}/profiles/ruby.yaml"
     status=0
     out="$(cd "${doc_life_cwd}" && MY_PI_AGENT_HOME="${doc_omit_home}" PI_SKILLS_HOME="${doc_omit_home}" "${bin}" doctor ruby 2>&1)" || status=$?
     test "${status}" -eq 0
@@ -323,7 +364,7 @@ smoke:
     # (l) doctor <life> with a malformed profile -> exit 2 (not swallowed).
     doc_badprof_home="$(mktemp -d)"
     mkdir -p "${doc_badprof_home}/profiles"
-    printf '%s\n' 'life: ruby' 'packs: {bad: true}' >"${doc_badprof_home}/profiles/ruby.yaml"
+    printf '%s\n' 'vida: ruby' 'packs: {bad: true}' >"${doc_badprof_home}/profiles/ruby.yaml"
     doc_badprof_cwd="$(mktemp -d)"
     status=0
     out="$(cd "${doc_badprof_cwd}" && MY_PI_AGENT_HOME="${doc_badprof_home}" PI_SKILLS_HOME="${tmp}" "${bin}" doctor ruby 2>&1)" || status=$?
@@ -345,7 +386,7 @@ smoke:
     # (m2) Issue #19: with required pieces satisfied but herdr off PATH,
     # doctor still exits 0 and warns (optional gap, never a failure).
     # Sandbox PATH so ONLY the stub bin is visible: pi+bun stubs plus symlinks
-    # for the coreutils doctor/pi-life need. No system dirs on PATH, so the
+    # for the coreutils doctor/pi-vida need. No system dirs on PATH, so the
     # real /bin/herdr and /usr/bin/just on this machine cannot leak into
     # `command -v` probing — just/rs-guard/herdr are simply absent.
     doc_nohome="$(mktemp -d)"
@@ -371,7 +412,7 @@ smoke:
     status=0
     "${bin}" ruby team typo >/dev/null 2>&1 || status=$?
     test "${status}" -eq 2
-    # Issue #11: capabilities overlay. Smoke calls `bin/pi-life --dump-overlay`
+    # Issue #11: capabilities overlay. Smoke calls `bin/pi-vida --dump-overlay`
     # to exercise the real read_overlay function, not a copy of it.
     # (a) Missing overlay -> all-off payload.
     nooverlay="$(mktemp -d)"
@@ -415,7 +456,7 @@ smoke:
     overlay_skill2="${overlay_life}/.pi/local-tracker/work"
     mkdir -p "${overlay_skill1}" "${overlay_skill2}"
     mkdir -p "${overlay_profile}/profiles"
-    printf '%s\n' 'life: python' 'tracker: github-issue' 'packs: []' 'mantra: [i-have-adhd]' >"${overlay_profile}/profiles/python.yaml"
+    printf '%s\n' 'vida: python' 'tracker: github-issue' 'packs: []' 'mantra: [i-have-adhd]' >"${overlay_profile}/profiles/python.yaml"
     mkdir -p "${tmp}/overlay-skills-home/i-have-adhd" "${tmp}/overlay-skills-home/github-issue"
     printf '%s\n' '# i-have-adhd' '# github-issue' >"${tmp}/overlay-skills-home/i-have-adhd/SKILL.md" "${tmp}/overlay-skills-home/github-issue/SKILL.md"
     printf '%s\n' >"${overlay_skill1}/SKILL.md"
@@ -454,7 +495,7 @@ smoke:
     notrack_tracker="${notrack_overlay_life}/.pi/local-tracker/work"
     mkdir -p "${notrack_tracker}" "${notrack_overlay_profile}/profiles"
     # Profile omits `tracker:` like profiles/elixir.yaml.
-    printf '%s\n' 'life: elixir' 'packs: []' 'mantra: [i-have-adhd]' >"${notrack_overlay_profile}/profiles/elixir.yaml"
+    printf '%s\n' 'vida: elixir' 'packs: []' 'mantra: [i-have-adhd]' >"${notrack_overlay_profile}/profiles/elixir.yaml"
     mkdir -p "${tmp}/notrack-overlay-skills-home/i-have-adhd"
     printf '%s\n' '# i-have-adhd' >"${tmp}/notrack-overlay-skills-home/i-have-adhd/SKILL.md"
     printf '%s\n' >"${notrack_tracker}/SKILL.md"
@@ -479,7 +520,7 @@ smoke:
     solo_life="$(mktemp -d)"
     mkdir -p "${solo_life}/profiles" "${solo_life}/i-have-adhd"
     printf '%s\n' '# i-have-adhd' >"${solo_life}/i-have-adhd/SKILL.md"
-    printf '%s\n' 'life: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' \
+    printf '%s\n' 'vida: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' \
       'models:' '  solo: openrouter/profile-default' 'thinking:' '  solo: medium' \
       >"${solo_life}/profiles/python.yaml"
     solo_out="$(cd "${solo_life}" && MY_PI_AGENT_HOME="${solo_life}" PI_SKILLS_HOME="${tmp}" "${bin}" --dry-run python 2>"${tmp}/solo.err")"
@@ -511,7 +552,7 @@ smoke:
     # (m) Issue #15: malformed profile models -> exit 2 (fail closed).
     badmodels="$(mktemp -d)"
     mkdir -p "${badmodels}/profiles"
-    printf '%s\n' 'life: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' 'models: solo' >"${badmodels}/profiles/python.yaml"
+    printf '%s\n' 'vida: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' 'models: solo' >"${badmodels}/profiles/python.yaml"
     status=0
     MY_PI_AGENT_HOME="${badmodels}" PI_SKILLS_HOME="${tmp}" "${bin}" --dry-run python >/dev/null 2>"${tmp}/badmodels.err" || status=$?
     test "${status}" -eq 2
@@ -520,14 +561,14 @@ smoke:
     # (shared contract with the overlay parser; no quiet typo failures).
     badlevel="$(mktemp -d)"
     mkdir -p "${badlevel}/profiles"
-    printf '%s\n' 'life: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' 'thinking:' '  solo: highh' >"${badlevel}/profiles/python.yaml"
+    printf '%s\n' 'vida: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' 'thinking:' '  solo: highh' >"${badlevel}/profiles/python.yaml"
     status=0
     MY_PI_AGENT_HOME="${badlevel}" PI_SKILLS_HOME="${tmp}" "${bin}" --dry-run python >/dev/null 2>"${tmp}/badlevel.err" || status=$?
     test "${status}" -eq 2
     grep -q 'thinking.solo must be a thinking level' "${tmp}/badlevel.err"
     badrole="$(mktemp -d)"
     mkdir -p "${badrole}/profiles"
-    printf '%s\n' 'life: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' 'models:' '  sol: openrouter/x' >"${badrole}/profiles/python.yaml"
+    printf '%s\n' 'vida: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' 'models:' '  sol: openrouter/x' >"${badrole}/profiles/python.yaml"
     status=0
     MY_PI_AGENT_HOME="${badrole}" PI_SKILLS_HOME="${tmp}" "${bin}" --dry-run python >/dev/null 2>"${tmp}/badrole.err" || status=$?
     test "${status}" -eq 2
@@ -548,7 +589,7 @@ smoke:
     merge_life="$(mktemp -d)"
     mkdir -p "${merge_life}/profiles" "${merge_life}/i-have-adhd"
     printf '%s\n' '# i-have-adhd' >"${merge_life}/i-have-adhd/SKILL.md"
-    printf '%s\n' 'life: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' \
+    printf '%s\n' 'vida: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' \
       'models:' '  planner: openrouter/profile-planner' '  builder: openrouter/profile-builder' \
       'thinking:' '  planner: high' \
       >"${merge_life}/profiles/python.yaml"
@@ -579,7 +620,7 @@ smoke:
     mkdir -p "${pack_life}/profiles" "${pack_home}/i-have-adhd" "${pack_home}/build"
     printf '%s\n' '# i-have-adhd' >"${pack_home}/i-have-adhd/SKILL.md"
     printf '%s\n' '# build' >"${pack_home}/build/SKILL.md"
-    printf '%s\n' 'life: python' 'tracker: none' 'mantra: [i-have-adhd]' 'packs: [my-pack]' >"${pack_life}/profiles/python.yaml"
+    printf '%s\n' 'vida: python' 'tracker: none' 'mantra: [i-have-adhd]' 'packs: [my-pack]' >"${pack_life}/profiles/python.yaml"
     printf '%s\n' '{"schema_version":1,"skills":{"my-pack:build":{"path":"build","source":"o/my-pack"}}}' >"${pack_home}/.dotskills-manifest.json"
     pack_out="$(cd "${pack_life}" && MY_PI_AGENT_HOME="${pack_life}" PI_SKILLS_HOME="${pack_home}" "${bin}" --dry-run python 2>"${tmp}/pack.err")"
     case "${pack_out}" in
@@ -714,14 +755,14 @@ smoke:
     just smoke-rails fixture
     echo "smoke ok"
 
-# Issue #14: run pi-life ruby from a Rails repo. repo is a path (must contain
+# Issue #14: run pi-vida ruby from a Rails repo. repo is a path (must contain
 # a Gemfile), "discover" (auto-detect under ~/Developer, default), or
 # "fixture" (temp synthetic Rails repo — what `just smoke` uses).
 smoke-rails repo='discover':
     #!/usr/bin/env bash
     set -euo pipefail
     root="{{justfile_directory()}}"
-    bin="${root}/bin/pi-life"
+    bin="${root}/bin/pi-vida"
     repo="{{repo}}"
     if [[ "${repo}" == "discover" ]]; then
       repo="$(find "${HOME}/Developer" -maxdepth 4 -name Gemfile -not -path '*/node_modules/*' \
@@ -762,12 +803,12 @@ smoke-rails repo='discover':
       echo "smoke-rails ok (${repo})"
     fi
 
-# Manual e2e: real dotskills install -> pi-life manifest resolution.
+# Manual e2e: real dotskills install -> pi-vida manifest resolution.
 # Needs a dotskills checkout (DOTSKILLS_HOME or ../dotskills); not in smoke.
 test-dotskills:
     "{{root}}/scripts/test-dotskills-install.sh"
 
-# Harness-dev: damage-control-continue (does not launch via pi-life)
+# Harness-dev: damage-control-continue (does not launch via pi-vida)
 ext-damage-control:
     cd "{{root}}" && pi -e extensions/damage-control-continue.ts
 
@@ -775,14 +816,14 @@ ext-damage-control:
 ext-minimal:
     cd "{{root}}" && pi -e extensions/minimal.ts
 
-# Harness-dev: purpose-gate then minimal footer (does not launch via pi-life)
+# Harness-dev: purpose-gate then minimal footer (does not launch via pi-vida)
 ext-purpose-gate:
     cd "{{root}}" && pi -e extensions/purpose-gate.ts -e extensions/minimal.ts
 
-# Harness-dev: register .claude/.gemini/.codex commands (does not launch via pi-life)
+# Harness-dev: register .claude/.gemini/.codex commands (does not launch via pi-vida)
 ext-cross-agent:
     cd "{{root}}" && pi -e extensions/cross-agent.ts -e extensions/minimal.ts
 
-# Harness-dev: /system persona picker (does not launch via pi-life)
+# Harness-dev: /system persona picker (does not launch via pi-vida)
 ext-system-select:
     cd "{{root}}" && pi -e extensions/system-select.ts -e extensions/minimal.ts

@@ -1,17 +1,17 @@
-# pi-life architecture
+# pi-vida architecture
 
 ## Executive summary
 
-pi-life is a launcher and extension set for the Pi coding agent. It turns a
-per-language profile (`profiles/<life>.yaml`) into one `pi` invocation: a fixed
+pi-vida is a launcher and extension set for the Pi coding agent. It turns a
+per-language profile (`profiles/<vida>.yaml`) into one `pi` invocation: a fixed
 extension stack, a `--no-skills` flag, and `--skill` arguments for exactly the
-skills the profile allowlists. The source of truth for what a life loads is the
+skills the profile allowlists. The source of truth for what a vida loads is the
 profile YAML; the source of truth for where skills come from is `packs.yaml`
 plus the skills home (`PI_SKILLS_HOME`, default `~/.agents/skills`).
 
 The most important rule is **INV-skills**: every session, including dispatched
 children, starts with `-e extensions/damage-control-continue.ts --no-skills`
-and only allowlisted `--skill` paths. `bin/pi-life` enforces it for the primary
+and only allowlisted `--skill` paths. `bin/pi-vida` enforces it for the primary
 session; `extensions/subagentHelpers.ts` enforces it in `buildChildArgv` for
 every child `pi` spawn. No code path may launch a session without the
 damage-control gate.
@@ -20,8 +20,8 @@ damage-control gate.
 
 ```mermaid
 flowchart LR
-    user([user in target repo]) -->|pi-life ruby team| PL[bin/pi-life<br/>bash launcher]
-    PL -->|reads| PROF[profiles/ruby.yaml<br/>life, mantra, packs, tracker,<br/>models, thinking]
+    user([user in target repo]) -->|pi-vida ruby team| PL[bin/pi-vida<br/>bash launcher]
+    PL -->|reads| PROF[profiles/ruby.yaml<br/>vida, mantra, packs, tracker,<br/>models, thinking]
     PL -->|reads| OV[target repo<br/>.pi/capabilities.yaml<br/>project overlay]
     PL -->|resolves names| SH[(skills home<br/>~/.agents/skills<br/>+ .dotskills-manifest.json)]
     PL -->|exec| PI[pi process<br/>host agent runtime]
@@ -33,7 +33,7 @@ flowchart LR
     BOOT -->|symlink + manifest| SH
 ```
 
-`pi-life` itself is a bash script. It shells out to `bun` only to parse YAML
+`pi-vida` itself is a bash script. It shells out to `bun` only to parse YAML
 (profiles, overlay, manifest) through `extensions/capabilities.ts` and
 `extensions/installed-skills.ts`, then `exec`s `pi` with the assembled argv.
 
@@ -43,7 +43,7 @@ flowchart LR
 flowchart TD
     PACKS[packs.yaml<br/>install sources] --> BOOT[skills-bootstrap.ts]
     BOOT --> SH[(skills home)]
-    PROF[profiles/*.yaml<br/>+ profiles/agents/*.yaml] --> PL[bin/pi-life]
+    PROF[profiles/*.yaml<br/>+ profiles/agents/*.yaml] --> PL[bin/pi-vida]
     OV[.pi/capabilities.yaml<br/>in target repo] --> PL
     SH --> PL
     PL -->|exec argv| PI[pi host]
@@ -61,18 +61,18 @@ concern (theme + terminal title); the first `-e` extension wins.
 
 ## Launch pipeline
 
-`launch_life` in `bin/pi-life` builds the argv in a fixed order. Each step can
+`launch_life` in `bin/pi-vida` builds the argv in a fixed order. Each step can
 fail closed (exit 2) before `pi` starts.
 
 ```mermaid
 sequenceDiagram
     participant U as user
-    participant PL as pi-life
+    participant PL as pi-vida
     participant B as bun parsers
     participant SH as skills home
     participant PI as pi
 
-    U->>PL: pi-life ruby team
+    U->>PL: pi-vida ruby team
     PL->>PL: canonical_life (rails→ruby; ecto/rails-python exit 2)
     PL->>PL: base argv: -e damage-control, boot-config,<br/>capabilities, clarify-gate, --no-skills (+ mode ext)
     PL->>B: read_profile(profiles/ruby.yaml)
@@ -85,7 +85,7 @@ sequenceDiagram
     PL->>B: read_overlay(cwd/.pi/capabilities.yaml)
     B-->>PL: overlay JSON (missing file = all off; bad YAML = exit 2)
     PL->>B: merge_overlay_roles (profile models/thinking under overlay)
-    PL->>PL: export PI_OVERLAY, MY_PI_AGENT_HOME, PI_LIFE
+    PL->>PL: export PI_OVERLAY, PI_VIDA_HOME, PI_VIDA, MY_PI_AGENT_HOME, PI_LIFE
     PL->>PI: exec pi <argv>
     PI->>PI: session_start: boot-config wizard if no overlay file,<br/>then capabilities prompt gate, clarify gate armed
 ```
@@ -119,7 +119,7 @@ maps each allowlisted name to `owner/repo` or an absolute local path.
 
 ```mermaid
 flowchart LR
-    PY[packs.yaml] -->|packs: name → source| SYNC[syncRepo<br/>clone/pull to<br/>~/.local/share/pi-life/repos/owner__repo]
+    PY[packs.yaml] -->|packs: name → source| SYNC[syncRepo<br/>clone/pull to<br/>~/.local/share/pi-vida/repos/owner__repo]
     PY -->|skills: name → source| SYNC
     SYNC --> SCAN[collectSkillDirs<br/>skills/*/SKILL.md]
     SCAN --> LINK[linkSkill<br/>symlink into skills home]
@@ -154,12 +154,12 @@ render UI check `ctx.hasUI` and no-op in print/JSON mode.
 | `capabilities.ts` | Overlay schema and parser (`parseOverlayDoc`, strict: unknown keys and non-booleans throw), role-map validation shared with `read_profile`, prompt-gate entry point. | Writing the overlay file |
 | `clarify-gate.ts` | Blocks `write`/`edit` until `/clarify`; read-only tools stay open. Per-session, opens permanently. Skipped without UI. | Prompt content (the `clarify` skill drives that) |
 | `status-line.ts` | Turn counter footer, solo mode only. | Chain/team modes |
-| `agent-chain.ts` | `/chain`, `/chain-list`, `run_chain` tool. Chain YAML discovery: cwd `.pi/agents/` → `profiles/<life>/agents/` → shared `profiles/agents/`, first file wins. | Team dispatch |
+| `agent-chain.ts` | `/chain`, `/chain-list`, `run_chain` tool. Chain YAML discovery: cwd `.pi/agents/` → `profiles/<vida>/agents/` → shared `profiles/agents/`, first file wins. | Team dispatch |
 | `agent-team.ts` | Dispatcher-only primary: `setActiveTools([dispatch_agent])` at `session_start` (pi 0.85 forbids action methods during load). Only members of the active team dispatch. | Chain execution |
-| `subagent.ts` + `subagentHelpers.ts` | `subagent` tool (single/parallel/chain modes) and `buildChildArgv`, the single place child `pi` argv is built. Not loaded by `pi-life` yet. | Primary-session tools |
+| `subagent.ts` + `subagentHelpers.ts` | `subagent` tool (single/parallel/chain modes) and `buildChildArgv`, the single place child `pi` argv is built. Not loaded by `pi-vida` yet. | Primary-session tools |
 | `installed-skills.ts` | `.dotskills-manifest.json` schema check and pack→paths resolution CLI used by `resolve_pack_paths`. | Installing skills |
-| `agentScan.ts` | Agent/command/skill discovery for agent defs: `profiles/<life>/agents/` → `profiles/agents/` → cwd `.pi/` → `.claude/.gemini/.codex` fallbacks, first-wins on name. Shared by `cross-agent`, `system-select`, `subagent`, `agent-chain`. Note: the chain *file* itself uses `resolveChainFile`, whose order puts the project `.pi/agents/` first. | Launch policy |
-| `cross-agent.ts`, `system-select.ts`, `minimal.ts`, `purpose-gate.ts` | Standalone extensions, loadable via `pi -e` but not wired into `pi-life`. | Launch wiring |
+| `agentScan.ts` | Agent/command/skill discovery for agent defs: `profiles/<vida>/agents/` → `profiles/agents/` → cwd `.pi/` → `.claude/.gemini/.codex` fallbacks, first-wins on name. Shared by `cross-agent`, `system-select`, `subagent`, `agent-chain`. Note: the chain *file* itself uses `resolveChainFile`, whose order puts the project `.pi/agents/` first. | Launch policy |
+| `cross-agent.ts`, `system-select.ts`, `minimal.ts`, `purpose-gate.ts` | Standalone extensions, loadable via `pi -e` but not wired into `pi-vida`. | Launch wiring |
 | `fusion-harness/` | Vendored multi-model stack runner (MIT, disler/fusion-harness). Stack `primary` slot becomes the host model. | Profile/overlay merging |
 
 ## Child sessions
@@ -174,7 +174,7 @@ overrides), keyed on the child's agent name (`planner`, `builder`, `reviewer`,
 
 ## Trust boundaries and invariants
 
-- **INV-skills** (above) is the load-bearing rule. Enforced by `bin/pi-life`
+- **INV-skills** (above) is the load-bearing rule. Enforced by `bin/pi-vida`
   argv construction and `buildChildArgv`.
 - **Profiles and overlay are untrusted input.** Both parse through strict
   validators in `capabilities.ts`; malformed YAML exits 2 before `pi` starts.
@@ -188,15 +188,15 @@ overrides), keyed on the child's agent name (`planner`, `builder`, `reviewer`,
   `warning: ` line by line. `--dry-run` prints the argv on stdout and
   `PI_OVERLAY` on stderr.
 - **Herdr is a host, not a dependency.** `herdr agent start <name> --kind pi
-  -- pi-life <life>` runs pi-life inside Herdr; the `herdr` mantra skill
+  -- pi-vida <vida>` runs pi-vida inside Herdr; the `herdr` mantra skill
   no-ops when `HERDR_ENV` is unset.
 
 ## Source map
 
 | Concept | Authoritative file |
 |---|---|
-| Launch argv, fail-closed rules, doctor | `bin/pi-life` |
-| Profile schema (mantra/packs/tracker/models/thinking) | `profiles/*.yaml`, `read_profile` in `bin/pi-life` |
+| Launch argv, fail-closed rules, doctor | `bin/pi-vida` |
+| Profile schema (mantra/packs/tracker/models/thinking) | `profiles/*.yaml`, `read_profile` in `bin/pi-vida` |
 | Overlay schema and merge | `extensions/capabilities.ts` |
 | Pack manifest resolution | `extensions/installed-skills.ts` |
 | Skill install sources | `packs.yaml`, `scripts/skills-bootstrap.ts` |
@@ -215,9 +215,9 @@ overrides), keyed on the child's agent name (`planner`, `builder`, `reviewer`,
   synthetic-Rails fixture run.
 - `bun test scripts/skills-bootstrap.test.ts`: parser, plan, cache-dir, and
   manifest filtering units.
-- `scripts/test-dotskills-install.sh`: real dotskills install → pi-life
+- `scripts/test-dotskills-install.sh`: real dotskills install → pi-vida
   resolution (requires a dotskills checkout).
-- `pi-life --dry-run <life> <mode>`: prints the exact argv without launching.
+- `pi-vida --dry-run <vida> <mode>`: prints the exact argv without launching.
 
 Evidence gap: the vendored `fusion-harness` internals are covered by its own
 `tests/` directory, not by harness assertions; treat its behavior as upstream.

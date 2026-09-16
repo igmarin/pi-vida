@@ -84,15 +84,15 @@ Pre-commit: `NEGATIVE` or any `[Critical]`/`[Security]` â†’ `REQUEST_CHANGES` â†
 
 ## Project-Specific Focus
 
-This is a TypeScript/Bun + bash harness (`pi-life`), not a Rails app. Proof is `just smoke`.
+This is a TypeScript/Bun + bash harness (`pi-vida`), not a Rails app. Proof is `just smoke`.
 
 **Must hold (shipped):**
 
 - INV-skills: argv includes `-e extensions/damage-control-continue.ts` then `--no-skills`; only allowlisted `--skill` paths.
 - Fail closed: invalid profile YAML and missing mantra/configured-tracker **paths** exit 2. Parser failures must propagate (no process-sub / `|| true` swallow). `tracker: none` and omitting tracker are not missing-path failures.
 - Missing optional packs warn; do not raise them to Critical.
-- Lives are `rust|elixir|ruby|python` only. `rails-python` is not a life.
-- Harness config is YAML (`profiles/<life>.yaml`). Do not introduce TOML for profiles/overlays/damage-control.
+- Vidas are `rust|elixir|ruby|python` only. `rails-python` is not a vida.
+- Harness config is YAML (`profiles/<vida>.yaml`). Do not introduce TOML for profiles/overlays/damage-control.
 - Extensions: `export default function (pi)`. Guard `ctx.ui` with `ctx.hasUI`. First `-e` wins stacked themes.
 - No secrets, `auth.json`, or `.env` in the diff; no reads of those from a target repo.
 - Launch-invariant changes update `CONTEXT.md` and `just smoke`. Keep `README.md` short.

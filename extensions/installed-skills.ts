@@ -32,7 +32,7 @@ if (import.meta.main) {
     if (paths.length) process.stdout.write(paths.join("\n") + "\n");
     else process.exit(1);
   } catch (error) {
-    console.error(`pi-life: ${error instanceof Error ? error.message : error}`);
+    console.error(`pi-vida: ${error instanceof Error ? error.message : error}`);
     process.exit(2);
   }
 }

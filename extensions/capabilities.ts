@@ -3,11 +3,11 @@
  *
  * The overlay is `<cwd>/.pi/capabilities.yaml`. Missing file ≡ all off.
  * The parser is strict: a non-mapping top-level value, an unknown key, or a
- * non-boolean capability throws (the caller in `bin/pi-life` exits 2 on throw).
+ * non-boolean capability throws (the caller in `bin/pi-vida` exits 2 on throw).
  *
  * Pure: no I/O, no `process.cwd()`. The caller passes the file contents.
  *
- * The default export below is the prompt-gate entry point wired in bin/pi-life.
+ * The default export below is the prompt-gate entry point wired in bin/pi-vida.
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -394,14 +394,14 @@ export function overlayFromEnv(): Overlay | undefined {
 }
 
 /**
- * Capability prompt-gate — reads PI_OVERLAY (JSON, written by bin/pi-life) and
+ * Capability prompt-gate — reads PI_OVERLAY (JSON, written by bin/pi-vida) and
  * appends a `<capabilities>` section to the system prompt at before_agent_start
  * when anything is on. With everything off, the system prompt is left alone —
  * the model never sees a capability that is not enabled for the project.
  *
- * bin/pi-life parses `<cwd>/.pi/capabilities.yaml` and exports the result.
+ * bin/pi-vida parses `<cwd>/.pi/capabilities.yaml` and exports the result.
  * If the file is missing, it exports EMPTY_OVERLAY (all off), so the gate is a
- * no-op. If the file is malformed, bin/pi-life exits 2 before pi is launched
+ * no-op. If the file is malformed, bin/pi-vida exits 2 before pi is launched
  * (fail closed, per issue #11 acceptance criteria).
  *
  * Usage: pi -e extensions/capabilities.ts

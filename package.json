@@ -1,5 +1,5 @@
 {
-  "name": "my-pi-agent",
+  "name": "pi-vida",
   "private": true,
   "type": "module",
   "description": "Personal Pi Coding Agent harness. yaml is for damage-control rules (#3). @earendil-works/pi-coding-agent + @earendil-works/pi-tui are the host's extension types (extensions/*.ts import from them); previously imported as @mariozechner/* but that scope was retired.",

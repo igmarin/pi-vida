@@ -89,10 +89,14 @@ async function withPathPi<T>(
 		const prevTimeout = process.env.PI_CHILD_TIMEOUT_MS;
 		const prevTeam = process.env.PI_TEAM;
 		const prevLife = process.env.PI_LIFE;
+		const prevVida = process.env.PI_VIDA;
 		const prevHome = process.env.MY_PI_AGENT_HOME;
+		const prevVidaHome = process.env.PI_VIDA_HOME;
 		process.env.PATH = `${dir}${delimiter}${prevPath ?? ""}`;
 		delete process.env.PI_LIFE;
+		delete process.env.PI_VIDA;
 		delete process.env.MY_PI_AGENT_HOME;
+		delete process.env.PI_VIDA_HOME;
 		try {
 			return await fn({ dir, ...files });
 		} finally {
@@ -105,8 +109,12 @@ async function withPathPi<T>(
 			else process.env.PI_TEAM = prevTeam;
 			if (prevLife === undefined) delete process.env.PI_LIFE;
 			else process.env.PI_LIFE = prevLife;
+			if (prevVida === undefined) delete process.env.PI_VIDA;
+			else process.env.PI_VIDA = prevVida;
 			if (prevHome === undefined) delete process.env.MY_PI_AGENT_HOME;
 			else process.env.MY_PI_AGENT_HOME = prevHome;
+			if (prevVidaHome === undefined) delete process.env.PI_VIDA_HOME;
+			else process.env.PI_VIDA_HOME = prevVidaHome;
 			rmSync(dir, { recursive: true, force: true });
 		}
 	};

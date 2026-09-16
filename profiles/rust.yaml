@@ -1,5 +1,5 @@
-# rust life. Packs are allowlists under ~/.agents/skills; not vendored here.
-life: rust
+# rust vida. Packs are allowlists under ~/.agents/skills; not vendored here.
+vida: rust
 tracker: github-issue
 packs:
   - agnostic-planning-skills

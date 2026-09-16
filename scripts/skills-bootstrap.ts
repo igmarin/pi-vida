@@ -4,7 +4,7 @@
  *
  * For each `packs:` entry: clone (or pull) the source into the repo cache,
  * symlink every skills/<name>/ containing a SKILL.md into the skills home,
- * and record "<pack>:<name>" in .dotskills-manifest.json so pi-life's pack
+ * and record "<pack>:<name>" in .dotskills-manifest.json so pi-vida's pack
  * resolution finds the installed skills.
  *
  * For each `skills:` entry: sync the repo the same way and link only
@@ -21,7 +21,7 @@
  *
  * Usage: bun scripts/skills-bootstrap.ts
  * Env:   PI_SKILLS_HOME (default ~/.agents/skills)
- *        PI_LIFE_REPOS  (default ~/.local/share/pi-life/repos)
+ *        PI_VIDA_REPOS  (default ~/.local/share/pi-vida/repos; PI_LIFE_REPOS fallback)
  *        PACKS_YAML     (default <repo>/packs.yaml)
  */
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
@@ -179,7 +179,7 @@ function readExistingManifest(skillsHome: string): Record<string, { path: string
 async function main(): Promise<void> {
 	const root = join(import.meta.dir, "..");
 	const skillsHome = process.env.PI_SKILLS_HOME ?? join(homedir(), ".agents", "skills");
-	const reposRoot = process.env.PI_LIFE_REPOS ?? join(homedir(), ".local", "share", "pi-life", "repos");
+	const reposRoot = process.env.PI_VIDA_REPOS ?? process.env.PI_LIFE_REPOS ?? join(homedir(), ".local", "share", "pi-vida", "repos");
 	const packsYaml = process.env.PACKS_YAML ?? join(root, "packs.yaml");
 	const config = parsePacksConfig(readFileSync(packsYaml, "utf8"));
 

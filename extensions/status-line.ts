@@ -6,7 +6,7 @@
  *   turn_start   → "● Turn N..."
  *   turn_end     → "✓ Turn N complete"
  *
- * Usage: loaded by bin/pi-life for solo mode only. Not wired for chain/team.
+ * Usage: loaded by bin/pi-vida for solo mode only. Not wired for chain/team.
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";

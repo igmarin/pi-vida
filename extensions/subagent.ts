@@ -5,9 +5,9 @@
  *
  * This file exports `default function (pi: ExtensionAPI)` which calls
  * `pi.registerTool({ name: "subagent", label: "Subagent", ... })`. Loaded
- * via `pi -e extensions/subagent.ts`. The tool is NOT loaded by `pi-life`
+ * via `pi -e extensions/subagent.ts`. The tool is NOT loaded by `pi-vida`
  * yet (Wave 4 work in the 0.1.0 sweep); it ships as a standalone extension
- * that can be enabled by adding it to the per-life `-e` list in `bin/pi-life`.
+ * that can be enabled by adding it to the per-vida `-e` list in `bin/pi-vida`.
  *
  * ## Modes
  *
@@ -25,7 +25,7 @@
  * ## Discovery
  *
  * Reuses the harness's `agentScan.collectAgents()` order:
- * `profiles/<life>/agents/` → `profiles/agents/` → cwd `.pi/agents/`
+ * `profiles/<vida>/agents/` → `profiles/agents/` → cwd `.pi/agents/`
  * (first-wins). The upstream user-vs-project trust prompt is dropped: this
  * harness has no such split — the harness itself is the project.
  *
@@ -90,7 +90,7 @@ export default function (pi: ExtensionAPI) {
 		description: [
 			"Delegate tasks to specialized subagents with isolated context.",
 			"Modes: single (agent + task), parallel (tasks[]), chain (chain[] with {previous} placeholder).",
-			"Discovery: profiles/<life>/agents/ → profiles/agents/ → cwd .pi/agents/ (first-wins).",
+			"Discovery: profiles/<vida>/agents/ → profiles/agents/ → cwd .pi/agents/ (first-wins).",
 			"Children inherit -e damage-control-continue.ts so the safety gate is never bypassed.",
 		].join(" "),
 		parameters,

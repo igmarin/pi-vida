@@ -123,6 +123,8 @@ export function isPathMatch(targetPath: string, pattern: string, cwd: string): b
 }
 
 function harnessRoot(): string {
+	if (process.env.PI_VIDA_HOME) return process.env.PI_VIDA_HOME;
+	if (process.env.PI_LIFE_HOME) return process.env.PI_LIFE_HOME;
 	if (process.env.MY_PI_AGENT_HOME) return process.env.MY_PI_AGENT_HOME;
 	return resolve(dirname(fileURLToPath(import.meta.url)), "..");
 }
@@ -154,7 +156,7 @@ function loadRules(): { rules: Rules; source: string; warning?: string } {
 			const warning =
 				"invalid project damage-control-rules.yaml; using harness defaults: " +
 				(err instanceof Error ? err.message : String(err));
-			console.error("pi-life:", warning);
+			console.error("pi-vida:", warning);
 			return { source: "harness", rules: parseRulesFile(harness), warning };
 		}
 	}
@@ -180,7 +182,7 @@ export default function (pi: ExtensionAPI) {
 			}
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
-			console.error("pi-life: damage-control rules failed to load:", msg);
+			console.error("pi-vida: damage-control rules failed to load:", msg);
 			rules = EMPTY;
 			if (ctx.hasUI) ctx.ui.notify(`Damage-Control: failed to load rules: ${msg}`, "error");
 		}

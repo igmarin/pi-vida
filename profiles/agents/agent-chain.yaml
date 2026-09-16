@@ -1,9 +1,9 @@
-# Shared default agent chains and teams. Lives may override with
-# profiles/<life>/agents/agent-chain.yaml; a project overrides both with
+# Shared default agent chains and teams. Vidas may override with
+# profiles/<vida>/agents/agent-chain.yaml; a project overrides both with
 # .pi/agents/agent-chain.yaml. {task} = the original request; {previous} = the
 # prior step's final output ("" for the first step). Teams (issue #8) are
 # consumed by extensions/agent-team.ts, the dispatcher-only primary launched
-# by `pi-life <life> team`; chain and team modes are mutually exclusive.
+# by `pi-vida <vida> team`; chain and team modes are mutually exclusive.
 teams:
   default:
     description: Plan, build, review, and research via dispatched specialists.

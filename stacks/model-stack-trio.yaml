@@ -1,6 +1,6 @@
 # Copy template — replace `model:`/`thinking:` per slot for your providers.
 # Copy into a target repo (e.g. .pi/fusion-harness/model-stack-trio.yaml)
-# and pass its path: `pi-life <life> fusion <path>` (or pi --fh-config).
+# and pass its path: `pi-vida <vida> fusion <path>` (or pi --fh-config).
 - name: fable
   model: anthropic/claude-fable-5
   thinking: medium

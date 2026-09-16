@@ -1,13 +1,13 @@
 # Install sources for profile allowlist names. Consumed by `just skills`
 # (scripts/skills-bootstrap.ts), which clones each repo into
-# ${PI_LIFE_REPOS:-~/.local/share/pi-life/repos} and symlinks skills into
+# ${PI_VIDA_REPOS:-~/.local/share/pi-vida/repos} and symlinks skills into
 # ${PI_SKILLS_HOME:-~/.agents/skills}, then writes .dotskills-manifest.json.
 #
 # packs:  allowlisted pack name -> owner/repo. Every skills/*/SKILL.md in the
 #         repo is linked and recorded under "<pack>:<skill>" in the manifest.
 # skills: individual allowlisted name (mantra/tracker) -> owner/repo. Only
 #         skills/<name>/ is linked. Needed when the skill lives inside a pack
-#         repo but the pack itself is not allowlisted by every life, or when
+#         repo but the pack itself is not allowlisted by every vida, or when
 #         the skill comes from a third-party repo.
 packs:
   agnostic-planning-skills: igmarin/agnostic-planning-skills

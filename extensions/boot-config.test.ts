@@ -28,13 +28,13 @@ import {
 
 describe("extractProfileModelDefaults", () => {
 	test("returns empty for absent keys", () => {
-		expect(extractProfileModelDefaults({ life: "ruby" })).toEqual({});
+		expect(extractProfileModelDefaults({ vida: "ruby" })).toEqual({});
 		expect(extractProfileModelDefaults(null)).toEqual({});
 	});
 
 	test("extracts models and thinking maps", () => {
 		const doc = parse(`
-life: ruby
+vida: ruby
 models:
   solo: openrouter/z-ai/glm-5.3-flash
   reviewer: openrouter/other
@@ -214,7 +214,7 @@ function makeCtx(ui: UiScript, cwd: string) {
 }
 
 describe("boot-config wizard flow", () => {
-	const envKeys = ["PI_OVERLAY", "PI_OVERLAY_EXISTS", "MY_PI_AGENT_HOME", "PI_LIFE"] as const;
+	const envKeys = ["PI_OVERLAY", "PI_OVERLAY_EXISTS", "PI_VIDA_HOME", "PI_LIFE_HOME", "MY_PI_AGENT_HOME", "PI_VIDA", "PI_LIFE"] as const;
 	let savedEnv: Record<string, string | undefined>;
 	let cwd = "";
 

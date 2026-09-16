@@ -95,8 +95,8 @@ export function buildOverlayDoc(
 }
 
 function readProfileDefaults(ctx: ExtensionContext): ProfileModelDefaults {
-	const home = process.env.MY_PI_AGENT_HOME;
-	const life = process.env.PI_LIFE;
+	const home = process.env.PI_VIDA_HOME || process.env.PI_LIFE_HOME || process.env.MY_PI_AGENT_HOME;
+	const life = process.env.PI_VIDA || process.env.PI_LIFE;
 	if (!home || !life) return {};
 	const profilePath = path.join(home, "profiles", `${life}.yaml`);
 	try {
