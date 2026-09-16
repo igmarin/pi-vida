@@ -109,13 +109,7 @@ export function planInstall(
 	allowlist?: string[],
 ): Plan {
 	const allowed = allowlist == null ? null : new Set(allowlist);
-	if (allowed) {
-		for (const name of allowed) {
-			if (!Object.hasOwn(config.packs, name) && !Object.hasOwn(config.skills, name)) {
-				throw new Error(`allowlist name not in packs.yaml: ${name}`);
-			}
-		}
-	}
+	if (allowed) validateAllowlist(config, allowlist);
 	const packs = Object.entries(config.packs).filter(([name]) => allowed?.has(name) ?? true);
 	const skills = Object.entries(config.skills).filter(([name]) => allowed?.has(name) ?? true);
 	const repos: Record<string, string[]> = {};
@@ -194,6 +188,19 @@ function readExistingManifest(skillsHome: string): Record<string, { path: string
 }
 
 /**
+ * Validate an allowlist against packs.yaml: every name must exist as a pack
+ * or skill entry (a stale profile name fails closed). Shared by
+ * planInstall and sourcesToSync so the two cannot drift.
+ */
+export function validateAllowlist(config: PacksConfig, allowlist: string[]): void {
+	for (const name of allowlist) {
+		if (!Object.hasOwn(config.packs, name) && !Object.hasOwn(config.skills, name)) {
+			throw new Error(`allowlist name not in packs.yaml: ${name}`);
+		}
+	}
+}
+
+/**
  * Sources to sync for this run. allowlist == null -> every referenced
  * source; otherwise the sources of every allowlisted name (a pack and a
  * skill may share one source — either name pulls it in).
@@ -202,6 +209,7 @@ export function sourcesToSync(
 	config: PacksConfig,
 	allowlist?: string[],
 ): string[] {
+	if (allowlist) validateAllowlist(config, allowlist);
 	const needed: string[] = [];
 	const push = (source: string) => {
 		if (!needed.includes(source)) needed.push(source);
@@ -278,7 +286,10 @@ async function main(): Promise<void> {
 
 if (import.meta.main) {
 	main().catch((e) => {
-		console.error(`skills-bootstrap: ${e instanceof Error ? e.message : e}`);
-		process.exit(1);
+		const msg = e instanceof Error ? e.message : String(e);
+		console.error(`skills-bootstrap: ${msg}`);
+		// Config-class failures (stale profile names in --allowlist) exit 2 like
+		// every other fail-closed parse error; runtime failures exit 1.
+		process.exit(msg.startsWith("allowlist name not in packs.yaml") ? 2 : 1);
 	});
 }
