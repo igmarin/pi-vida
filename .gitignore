@@ -19,3 +19,4 @@ review-result.txt
 rs-guard-metrics.json
 .rs-guard/cache/
 .kilo/
+crates/pi-vida/target/
