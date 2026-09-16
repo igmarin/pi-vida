@@ -119,6 +119,10 @@ export function formatAgentsView(v: ResolvedAgentsView): string {
 	lines.push(`chain-order: ${v.chainOrder.join(" > ")}`);
 	lines.push(`agent-order: ${v.agentOrder.join(" > ")}`);
 	const overlay = overlayFromEnv();
+	// Expects the launcher's MERGED PI_OVERLAY (profile defaults folded under
+	// overlay overrides by collect_launch_args — the payload children dispatch
+	// from). A raw PI_OVERLAY (e.g. a direct bun invocation without the
+	// launcher) renders profile defaults as "inherit".
 	for (const a of v.agents) {
 		lines.push(`agent: ${a.name}`);
 		lines.push(`  source: ${a.source}`);
