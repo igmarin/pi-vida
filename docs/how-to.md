@@ -183,7 +183,7 @@ pi-vida ruby team
 PI_TEAM=fast pi-vida ruby team    # override the active team (default: planner, builder, reviewer, researcher)
 ```
 
-`/agents` (loaded in solo, chain, and team) prints the resolved agents view — winners, shadows, tools, model, team, discovery orders (same as `pi-vida agents <vida>`, minus the `--skill` paths). Team mode also notifies the active team and member tool lists at session start.
+`/agents` (loaded in every launch mode) prints the resolved agents view — winners, shadows, tools, model, team, discovery orders (same as `pi-vida agents <vida>`, minus the `--skill` paths). Team mode also notifies the active team and member tool lists at session start.
 
 ## rs-guard review flow
 

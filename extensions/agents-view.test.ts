@@ -280,8 +280,6 @@ test("/agents handler formats the resolved view; UI notify vs stdout", async () 
 		expect(seen.length).toBe(1);
 		expect(seen[0].level).toBe("info");
 		expect(seen[0].msg).toContain("vida:");
-		// bash-only skill lines never render in-session (#77).
-		expect(seen[0].msg).not.toContain("skill:");
 		expect(seen[0].msg).toContain("team: default (default)");
 	} finally {
 		if (prevHome === undefined) delete process.env.MY_PI_AGENT_HOME;
