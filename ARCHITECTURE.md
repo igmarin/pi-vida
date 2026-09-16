@@ -220,7 +220,7 @@ overrides), keyed on the child's agent name (`planner`, `builder`, `reviewer`,
 | Concept | Authoritative file |
 |---|---|
 | Wrapper (Rust-vs-bash dispatch) | `bin/pi-vida` |
-| Rust launcher (gum flow, `--host cline|kilo|claude`) | `crates/pi-vida/src/cli.rs`, `crates/pi-vida/src/hosts.rs` |
+| Rust launcher (gum flow, `--host cline\|kilo\|claude`) | `crates/pi-vida/src/cli.rs`, `crates/pi-vida/src/hosts.rs` |
 | Launch argv, fail-closed rules, doctor | `libexec/pi-vida-launch` |
 | Profile schema (mantra/packs/tracker/models/thinking) | `profiles/*.yaml`, `read_profile` in `libexec/pi-vida-launch` |
 | Resolved agents view (`/agents`, inspector) | `extensions/agents-view.ts` |
