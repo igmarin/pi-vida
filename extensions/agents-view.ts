@@ -8,7 +8,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { type AgentDef, agentSources, canonicalLife, discover, harnessRoot } from "./agentScan.ts";
 import {
 	chainCandidates,
@@ -89,6 +89,7 @@ export function resolvedAgentsView(
 			// team: none instead of the errors the chain/team launch modes
 			// raise. Anything else is a real bug — rethrow, never mask it.
 			if (!(e instanceof ChainError)) throw e;
+			console.error(`agents-view: ${e.message}; showing team: none`);
 			view.team = null;
 		}
 	}

@@ -729,7 +729,9 @@ smoke:
     # defaults folded under overlay overrides by collect_launch_args), not
     # the raw project overlay — the same map children dispatch from.
     # builder is profile-only (proves gap-fill: not "inherit"), planner is
-    # overridden by the overlay (proves overlay wins per role).
+    # overridden by the overlay (proves overlay wins per role). agents-view.ts
+    # loads from the resolved root, so the fixture itself carries the module
+    # tree piece the resolver needs.
     agents_prof="${tmp}/agents-prof"
     mkdir -p "${agents_prof}/profiles/python/agents" "${agents_prof}/i-have-adhd" "${agents_prof}/agents-cwd/.pi"
     printf '%s\n' '# i-have-adhd' >"${agents_prof}/i-have-adhd/SKILL.md"
@@ -738,6 +740,7 @@ smoke:
     printf '%s\n' 'vida: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' \
       'models:' '  planner: openrouter/profile-planner' '  builder: openrouter/profile-builder' >"${agents_prof}/profiles/python.yaml"
     printf '%s\n' 'models:' '  planner: openrouter/overlay-planner' >"${agents_prof}/agents-cwd/.pi/capabilities.yaml"
+    ln -s "{{root}}/extensions" "${agents_prof}/extensions"
     agents_merge_out="$(cd "${agents_prof}/agents-cwd" && MY_PI_AGENT_HOME="${agents_prof}" PI_SKILLS_HOME="${agents_prof}" "${bin}" agents python 2>/dev/null)"
     grep -q -- '  model: openrouter/overlay-planner' <<<"${agents_merge_out}"
     grep -q -- '  model: openrouter/profile-builder' <<<"${agents_merge_out}"
