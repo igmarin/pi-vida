@@ -16,6 +16,10 @@ install:
     ln -sfn "{{root}}/bin/pi-life" "${HOME}/.local/bin/pi-life"
     echo "pi-vida -> {{root}}/bin/pi-vida"
 
+# Build the Rust launcher (bin/pi-vida prefers it once present)
+build:
+    cargo build --release --manifest-path "{{root}}/crates/pi-vida/Cargo.toml"
+
 # Provision PI_SKILLS_HOME from packs.yaml: clone pack/skill repos, symlink
 # skills into ~/.agents/skills, write .dotskills-manifest.json. Idempotent.
 skills:
@@ -813,6 +817,92 @@ smoke:
     # the default run is deterministic (a discovered repo's own overlay could
     # inject argv). `just smoke-rails` manually prefers a real repo.
     just smoke-rails fixture
+
+    # Issue #82: Rust launcher (crates/pi-vida). Guards on cargo so a
+    # machine without Rust skips these instead of faking green (design §4
+    # AC-3/4/9/13/14/15). bin/pi-vida prefers the built binary, so after
+    # `just build` everything above exercises the Rust delegation path too.
+    if command -v cargo >/dev/null 2>&1; then
+      just build >/dev/null
+      rust_bin="${root}/crates/pi-vida/target/release/pi-vida"
+      test -x "${rust_bin}"
+
+      # AC-2 via the wrapper: built Rust binary still matches INV-skills.
+      r82_out="$("${bin}" --dry-run ruby team 2>/dev/null)"
+      case "${r82_out}" in
+        pi\ -e\ *damage-control-continue.ts\ *clarify-gate.ts\ --no-skills\ *) ;;
+        *) echo "issue82: wrapper INV-skills argv wrong: ${r82_out}" >&2; exit 1 ;;
+      esac
+
+      # AC-3: cline dry-run names ~/.agents/skills, never Pi extensions.
+      r82_cline="$("${bin}" --dry-run ruby --host cline 2>/dev/null)"
+      grep -q -- ".agents/skills" <<<"${r82_cline}"
+      ! grep -q -- "damage-control-continue" <<<"${r82_cline}"
+      ! grep -q -- "--no-skills" <<<"${r82_cline}"
+
+      # AC-4: kilo/claude dry-runs name their skill dirs + the host.
+      r82_kilo="$("${bin}" --dry-run ruby --host kilo 2>/dev/null)"
+      grep -q -- ".kilo/skills" <<<"${r82_kilo}"
+      grep -q '^kilo$' <<<"${r82_kilo}"
+      r82_claude="$("${bin}" --dry-run ruby --host claude 2>/dev/null)"
+      grep -q -- ".claude/skills" <<<"${r82_claude}"
+      grep -q '^claude$' <<<"${r82_claude}"
+
+      # AC-9: modes are Pi-only. solo/chain/team exit 2 with the modes
+      # message; fusion without a stack exits 2 on the stack-file check.
+      for m in solo chain team; do
+        status=0
+        "${bin}" --dry-run ruby --host kilo "${m}" >/dev/null 2>"${tmp}/ac9.err" || status=$?
+        test "${status}" -eq 2
+        grep -q 'modes are Pi-only' "${tmp}/ac9.err"
+      done
+      status=0
+      "${bin}" --dry-run ruby --host kilo fusion >/dev/null 2>"${tmp}/ac9.err" || status=$?
+      test "${status}" -eq 2
+      grep -q 'modes are Pi-only\|fusion requires' "${tmp}/ac9.err"
+
+      # AC-13 + AC-14: manifest-resolved skill projected under the host dir,
+      # and Cline projects into ~/.agents/skills even when PI_SKILLS_HOME
+      # points elsewhere. Fixture HOME + canonicalize-free symlink check.
+      ac13_home="$(mktemp -d)"
+      ac13_skills="${ac13_home}/skills-home"
+      ac13_fixture="${ac13_home}/fixture-repo"
+      mkdir -p "${ac13_fixture}/skills/ruby-core-resolved" "${ac13_skills}"
+      printf '%s\n' '# resolved' >"${ac13_fixture}/skills/ruby-core-resolved/SKILL.md"
+      ln -s "${ac13_fixture}/skills/ruby-core-resolved" "${ac13_skills}/ruby-core-resolved"
+      printf '%s\n' '{"schema_version":1,"skills":{"ruby-core-skills:ruby-core-resolved":{"path":"ruby-core-resolved"}}}' >"${ac13_skills}/.dotskills-manifest.json"
+      ac13_prof="$(mktemp -d)"
+      mkdir -p "${ac13_prof}/profiles"
+      printf '%s\n' 'vida: ruby' 'tracker: none' 'packs: [ruby-core-skills]' 'mantra: []' >"${ac13_prof}/profiles/ruby.yaml"
+      ac13_out="$(HOME="${ac13_home}" PI_SKILLS_HOME="${ac13_skills}" MY_PI_AGENT_HOME="${ac13_prof}" "${bin}" --dry-run ruby --host kilo 2>/dev/null)"
+      grep -q -- "${ac13_home}/.kilo/skills/ruby-core-resolved" <<<"${ac13_out}"
+      ! grep -q -- "${ac13_home}/.kilo/skills/ruby-core-skills" <<<"${ac13_out}"
+      # AC-14: cline projects to ~/.agents/skills (not the fixture home).
+      ac14_out="$(HOME="${ac13_home}" PI_SKILLS_HOME="${ac13_skills}" MY_PI_AGENT_HOME="${ac13_prof}" "${bin}" --dry-run ruby --host cline 2>/dev/null)"
+      grep -q -- "${ac13_home}/.agents/skills/ruby-core-resolved" <<<"${ac14_out}"
+      rm -rf "${ac13_home}" "${ac13_prof}"
+
+      # AC-15/AC-12 Rust-side: only-life and only-vida profiles parse; both
+      # different exits 2 (bash side pins the same contract).
+      ac15_home="$(mktemp -d)"
+      mkdir -p "${ac15_home}/profiles" "${ac15_home}/i-have-adhd"
+      printf '%s\n' '# i-have-adhd' >"${ac15_home}/i-have-adhd/SKILL.md"
+      printf '%s\n' 'life: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' >"${ac15_home}/profiles/python.yaml"
+      ac15_out="$(MY_PI_AGENT_HOME="${ac15_home}" PI_SKILLS_HOME="${ac15_home}" "${bin}" --dry-run python 2>/dev/null)"
+      grep -q -- "--skill ${ac15_home}/i-have-adhd" <<<"${ac15_out}"
+      printf '%s\n' 'vida: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' >"${ac15_home}/profiles/python.yaml"
+      ac15_out="$(MY_PI_AGENT_HOME="${ac15_home}" PI_SKILLS_HOME="${ac15_home}" "${bin}" --dry-run python 2>/dev/null)"
+      grep -q -- "--skill ${ac15_home}/i-have-adhd" <<<"${ac15_out}"
+      printf '%s\n' 'vida: python' 'life: ruby' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' >"${ac15_home}/profiles/python.yaml"
+      status=0
+      MY_PI_AGENT_HOME="${ac15_home}" PI_SKILLS_HOME="${ac15_home}" "${bin}" --dry-run python >/dev/null 2>"${tmp}/ac12.err" || status=$?
+      test "${status}" -eq 2
+      grep -q 'vida and life both set and differ' "${tmp}/ac12.err"
+      rm -rf "${ac15_home}"
+      echo "issue82 rust launcher checks ok"
+    else
+      echo "warning: cargo not found; skipping issue82 rust launcher checks" >&2
+    fi
     echo "smoke ok"
 
 # Issue #14: run pi-vida ruby from a Rails repo. repo is a path (must contain

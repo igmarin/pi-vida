@@ -96,23 +96,34 @@ interface Plan {
 	manifest: Record<string, { path: string }>;
 }
 
-/** Build the link+manifest plan from config. Pure: no fs, no network. */
+/**
+ * Build the link+manifest plan from config. Pure: no fs, no network.
+ * allowlist (optional): when given, only those names install — packs whose
+ * name is listed contribute their repo skills, `skills:` entries whose name
+ * is listed contribute their single link. An allowlisted name that matches
+ * nothing in packs.yaml fails closed (the profile is stale).
+ */
 export function planInstall(
 	config: PacksConfig,
 	packSkills: (pack: string, source: string) => string[],
+	allowlist?: string[],
 ): Plan {
+	const allowed = allowlist == null ? null : new Set(allowlist);
+	if (allowed) validateAllowlist(config, allowlist);
+	const packs = Object.entries(config.packs).filter(([name]) => allowed?.has(name) ?? true);
+	const skills = Object.entries(config.skills).filter(([name]) => allowed?.has(name) ?? true);
 	const repos: Record<string, string[]> = {};
 	const manifest: Record<string, { path: string }> = {};
 	const addRepo = (source: string, names: string[]) => {
 		const cur = repos[source] ?? (repos[source] = []);
 		for (const n of names) if (!cur.includes(n)) cur.push(n);
 	};
-	for (const [pack, source] of Object.entries(config.packs)) {
+	for (const [pack, source] of packs) {
 		const names = packSkills(pack, source);
 		addRepo(source, names);
 		for (const name of names) manifest[`${pack}:${name}`] = { path: name };
 	}
-	for (const [name, source] of Object.entries(config.skills)) {
+	for (const [name, source] of skills) {
 		addRepo(source, [name]);
 	}
 	return { repos, manifest };
@@ -176,6 +187,42 @@ function readExistingManifest(skillsHome: string): Record<string, { path: string
 	return doc.skills;
 }
 
+/**
+ * Validate an allowlist against packs.yaml: every name must exist as a pack
+ * or skill entry (a stale profile name fails closed). Shared by
+ * planInstall and sourcesToSync so the two cannot drift.
+ */
+export function validateAllowlist(config: PacksConfig, allowlist: string[]): void {
+	for (const name of allowlist) {
+		if (!Object.hasOwn(config.packs, name) && !Object.hasOwn(config.skills, name)) {
+			throw new Error(`allowlist name not in packs.yaml: ${name}`);
+		}
+	}
+}
+
+/**
+ * Sources to sync for this run. allowlist == null -> every referenced
+ * source; otherwise the sources of every allowlisted name (a pack and a
+ * skill may share one source — either name pulls it in).
+ */
+export function sourcesToSync(
+	config: PacksConfig,
+	allowlist?: string[],
+): string[] {
+	if (allowlist) validateAllowlist(config, allowlist);
+	const needed: string[] = [];
+	const push = (source: string) => {
+		if (!needed.includes(source)) needed.push(source);
+	};
+	for (const [name, src] of Object.entries(config.packs)) {
+		if (!allowlist || allowlist.includes(name)) push(src);
+	}
+	for (const [name, src] of Object.entries(config.skills)) {
+		if (!allowlist || allowlist.includes(name)) push(src);
+	}
+	return needed;
+}
+
 async function main(): Promise<void> {
 	const root = join(import.meta.dir, "..");
 	const skillsHome = process.env.PI_SKILLS_HOME ?? join(homedir(), ".agents", "skills");
@@ -183,17 +230,38 @@ async function main(): Promise<void> {
 	const packsYaml = process.env.PACKS_YAML ?? join(root, "packs.yaml");
 	const config = parsePacksConfig(readFileSync(packsYaml, "utf8"));
 
+	// --allowlist <names...>: install only those profile names (mantra, packs,
+	// tracker). Everything else in packs.yaml stays untouched. No flag = full
+	// packs.yaml provisioning (`just skills`).
+	const allowIdx = process.argv.indexOf("--allowlist");
+	const allowlist =
+		allowIdx === -1
+			? undefined
+			: (() => {
+					const tail = process.argv.slice(allowIdx + 1);
+					const stop = tail.findIndex((a) => a.startsWith("-"));
+					return (stop === -1 ? tail : tail.slice(0, stop)).filter((a) => a !== "--");
+				})();
+	if (allowlist && allowlist.length === 0) {
+		console.error("skills-bootstrap: --allowlist requires at least one name");
+		process.exit(2);
+	}
+
 	// Sync every referenced repo first so pack skill lists come from disk.
 	const repoDirs: Record<string, string> = {};
-	for (const source of new Set([...Object.values(config.packs), ...Object.values(config.skills)])) {
+	for (const source of sourcesToSync(config, allowlist)) {
 		repoDirs[source] = await syncRepo(source, reposRoot);
 	}
 
-	const plan = planInstall(config, (pack, source) => {
-		const names = collectSkillDirs(repoDirs[source]);
-		if (names.length === 0) console.error(`warning: pack ${pack}: no skills found in ${source}`);
-		return names;
-	});
+	const plan = planInstall(
+		config,
+		(pack, source) => {
+			const names = collectSkillDirs(repoDirs[source]);
+			if (names.length === 0) console.error(`warning: pack ${pack}: no skills found in ${source}`);
+			return names;
+		},
+		allowlist,
+	);
 
 	mkdirSync(skillsHome, { recursive: true });
 	let linked = 0;
@@ -218,7 +286,10 @@ async function main(): Promise<void> {
 
 if (import.meta.main) {
 	main().catch((e) => {
-		console.error(`skills-bootstrap: ${e instanceof Error ? e.message : e}`);
-		process.exit(1);
+		const msg = e instanceof Error ? e.message : String(e);
+		console.error(`skills-bootstrap: ${msg}`);
+		// Config-class failures (stale profile names in --allowlist) exit 2 like
+		// every other fail-closed parse error; runtime failures exit 1.
+		process.exit(msg.startsWith("allowlist name not in packs.yaml") ? 2 : 1);
 	});
 }
