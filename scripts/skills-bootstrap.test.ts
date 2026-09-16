@@ -8,6 +8,7 @@ import {
 	parsePacksConfig,
 	planInstall,
 	repoCacheDir,
+	sourcesToSync,
 } from "./skills-bootstrap.ts";
 
 const VALID = `
@@ -104,5 +105,73 @@ describe("manifestEntries", () => {
 			home,
 		);
 		expect(Object.keys(entries)).toEqual(["pack:alpha"]);
+	});
+});
+
+describe("planInstall with allowlist", () => {
+	const PACKS_AND_SKILLS = `
+packs:
+  ruby-core-skills: igmarin/ruby-core-skills
+  elixir-phoenix-skills: igmarin/elixir-phoenix-skills
+skills:
+  tdd: igmarin/elixir-phoenix-skills
+  herdr: herdrdev/herdr
+`;
+
+	test("keeps only allowlisted packs, their skills, and skills sources", () => {
+		const c = parsePacksConfig(PACKS_AND_SKILLS);
+		const plan = planInstall(c, () => ["alpha", "beta"], ["ruby-core-skills", "tdd"]);
+		// Elixir pack is not on this vida: not synced, not linked, not manifest.
+		expect(Object.keys(plan.repos)).toEqual(["igmarin/ruby-core-skills", "igmarin/elixir-phoenix-skills"]);
+		expect(plan.repos["igmarin/ruby-core-skills"]).toEqual(["alpha", "beta"]);
+		// tdd's source is synced only for the individual skill link.
+		expect(plan.repos["igmarin/elixir-phoenix-skills"]).toEqual(["tdd"]);
+		expect(plan.manifest["ruby-core-skills:alpha"]).toEqual({ path: "alpha" });
+		expect(plan.manifest["elixir-phoenix-skills:alpha"]).toBeUndefined();
+		expect(plan.manifest["tdd"]).toBeUndefined();
+	});
+
+	test("unknown allowlist name fails closed", () => {
+		const c = parsePacksConfig(PACKS_AND_SKILLS);
+		expect(() => planInstall(c, () => ["alpha"], ["ruby-core-skills", "no-such-name"])).toThrow(
+			"not in packs.yaml",
+		);
+	});
+
+	test("empty allowlist installs nothing", () => {
+		const c = parsePacksConfig(PACKS_AND_SKILLS);
+		const plan = planInstall(c, () => ["alpha"], []);
+		expect(plan.repos).toEqual({});
+		expect(plan.manifest).toEqual({});
+	});
+});
+
+describe("sourcesToSync", () => {
+	const SHARED = parsePacksConfig(`
+packs:
+  agnostic-planning-skills: igmarin/agnostic-planning-skills
+  ruby-core-skills: igmarin/ruby-core-skills
+skills:
+  requirements-clarifier: igmarin/agnostic-planning-skills
+`);
+
+	test("no allowlist syncs every referenced source", () => {
+		expect(sourcesToSync(SHARED)).toEqual([
+			"igmarin/agnostic-planning-skills",
+			"igmarin/ruby-core-skills",
+		]);
+	});
+
+	test("a shared source syncs when either of its names is allowlisted", () => {
+		// requirements-clarifier (skill) shares the agnostic pack's repo; the
+		// pack itself is not allowlisted but its source must still sync.
+		expect(sourcesToSync(SHARED, ["requirements-clarifier", "ruby-core-skills"]).sort()).toEqual([
+			"igmarin/agnostic-planning-skills",
+			"igmarin/ruby-core-skills",
+		]);
+	});
+
+	test("empty allowlist syncs nothing", () => {
+		expect(sourcesToSync(SHARED, [])).toEqual([]);
 	});
 });
