@@ -179,9 +179,11 @@ Steps run as child `pi` processes (JSON mode, isolated context, damage-control g
 pi-vida ruby team
 # the primary cannot read/write/bash — it plans and dispatches:
 # dispatch_agent(agent: "builder", task: "...") for each team member
-/team-list                        # teams, active team marked
+/team-list                        # teams with member tool lists, active team starred
 PI_TEAM=fast pi-vida ruby team    # override the active team (default: planner, builder, reviewer, researcher)
 ```
+
+`/agents` (loaded in solo, chain, and team) prints the resolved agents view — winners, shadows, tools, model, team, discovery orders (same as `pi-vida agents <vida>`, minus the `--skill` paths). Team mode also notifies the active team and member tool lists at session start.
 
 ## rs-guard review flow
 

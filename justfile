@@ -98,6 +98,12 @@ smoke:
     ! grep -q -- "agent-chain.ts" <<<"${rust_team_out}"
     ! grep -q -- "agent-team.ts" <<<"${rust_chain_out}"
 
+    # Issue #77: the /agents command extension loads in every launch mode.
+    echo "${rust_out}" | grep -q -- "-e ${root}/extensions/agents-view.ts"
+    echo "${rust_solo_out}" | grep -q -- "-e ${root}/extensions/agents-view.ts"
+    echo "${rust_chain_out}" | grep -q -- "-e ${root}/extensions/agents-view.ts"
+    echo "${rust_team_out}" | grep -q -- "-e ${root}/extensions/agents-view.ts"
+
     # (p) fusion mode loads the vendored multi-model extension with an
     # explicit stack file; solo/team/chain argv never carry it.
     fusion_stack="${tmp}/model-stack-trio.yaml"

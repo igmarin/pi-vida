@@ -444,7 +444,7 @@ collect_launch_args() {
   skill_names=""
   # Issue #15: boot-config runs BEFORE capabilities so its first-launch TUI
   # can update PI_OVERLAY in the same session (handler order = -e order).
-  pi_args=(-e "${root}/extensions/damage-control-continue.ts" -e "${root}/extensions/boot-config.ts" -e "${root}/extensions/capabilities.ts" -e "${root}/extensions/clarify-gate.ts" --no-skills)
+  pi_args=(-e "${root}/extensions/damage-control-continue.ts" -e "${root}/extensions/boot-config.ts" -e "${root}/extensions/capabilities.ts" -e "${root}/extensions/clarify-gate.ts" --no-skills -e "${root}/extensions/agents-view.ts")
   if [[ "${mode}" == "solo" ]]; then
     pi_args+=(-e "${root}/extensions/status-line.ts")
   fi

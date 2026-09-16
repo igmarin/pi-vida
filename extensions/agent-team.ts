@@ -35,6 +35,7 @@ import {
 	type TeamDef,
 } from "./agent-chain.ts";
 import { collectAgents, harnessRoot } from "./agentScan.ts";
+import { formatTeamList } from "./agents-view.ts";
 import {
 	aggregateUsage,
 	formatUsageStats,
@@ -72,22 +73,37 @@ export default function (pi: ExtensionAPI) {
 	// with chain/tilldone is structural — the launcher never loads those
 	// extensions in team mode. setActiveTools is an action method: it must run
 	// inside an event handler (session_start), not during extension loading.
-	pi.on("session_start", async () => {
+	pi.on("session_start", async (_event, ctx) => {
 		pi.setActiveTools(["dispatch_agent"]);
+		// Issue #77: state the active team and member tool lists up front so
+		// the dispatcher plans with knowledge of who can do what. Silent in
+		// print/JSON mode, like the other UI-only surfaces.
+		if (!ctx.hasUI) return;
+		try {
+			const { teams } = loadedTeams(ctx.cwd);
+			const active = pickTeam(teams, process.env.PI_TEAM);
+			const msg = `Team ${active.name} active — members with tools:\n${formatTeamList(
+				teams,
+				active,
+				collectAgents(ctx.cwd, import.meta.url),
+			)}`;
+			ctx.ui.notify(msg, "info");
+		} catch (e) {
+			ctx.ui.notify(e instanceof Error ? e.message : String(e), "error");
+		}
 	});
 
 	pi.registerCommand("team-list", {
-		description: "List available agent teams (teams: key of agent-chain.yaml)",
+		description: "List agent teams with member tool lists (teams: key of agent-chain.yaml)",
 		handler: async (_args, ctx) => {
 			try {
 				const { source, teams } = loadedTeams(ctx.cwd);
-				const wanted = process.env.PI_TEAM;
-				const active = pickTeam(teams, wanted);
-				const lines = [...teams.values()].map(
-					(t) =>
-						`${t.name === active.name ? "* " : "  "}${t.name} — ${t.description}`,
-				);
-				const msg = `Teams (${source}, active: ${active.name}):\n${lines.join("\n")}`;
+				const active = pickTeam(teams, process.env.PI_TEAM);
+				const msg = `Teams (${source}, active: ${active.name}):\n${formatTeamList(
+					teams,
+					active,
+					collectAgents(ctx.cwd, import.meta.url),
+				)}`;
 				if (ctx.hasUI) ctx.ui.notify(msg, "info");
 				else console.log(msg);
 			} catch (e) {
