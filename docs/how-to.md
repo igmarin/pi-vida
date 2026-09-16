@@ -69,6 +69,8 @@ pi-vida agents ruby            # resolved view for cwd + vida
 pi-vida agents nope            # unknown vida → exit 2
 ```
 
+The vida argument is optional when `PI_VIDA`/`PI_LIFE` is set in the environment. Like launch, `agents` fails closed (exit 2) on a missing mantra/tracker skill path — use `pi-vida doctor` to diagnose a broken install.
+
 `key: value` lines: winner/shadowed personas, active team (`team:` / `members:`), the chain file that won, both discovery orders (`*` = exists on disk), and the `--skill` paths launch would pass. Semantics in CONTEXT.md (Agent / Chain); resolver: `resolvedAgentsView` in `extensions/agents-view.ts`.
 
 ## Model fusion

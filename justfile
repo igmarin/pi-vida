@@ -696,8 +696,9 @@ smoke:
       console.log("agent-chain default chain ok");
     '
     # Issue #81: pi-vida agents <vida> — the resolved view from a temp cwd.
-    agents_cwd="$(mktemp -d)"
-    trap 'rm -rf "${agents_cwd}"' RETURN
+    # Lives under ${tmp} so the existing EXIT trap cleans it up on failure.
+    agents_cwd="${tmp}/agents-cwd"
+    mkdir -p "${agents_cwd}"
     agents_out="$(cd "${agents_cwd}" && MY_PI_AGENT_HOME="{{root}}" PI_SKILLS_HOME="${tmp}" "${bin}" agents ruby 2>"${tmp}/agents.err")"
     grep -q '^vida: ruby$' <<<"${agents_out}"
     grep -q 'profiles/agents/planner.yaml' <<<"${agents_out}"

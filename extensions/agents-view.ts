@@ -68,24 +68,16 @@ export function resolvedAgentsView(
 	const chainFile = candidates.find((c) => existsSync(c.path));
 	if (chainFile) {
 		view.chainFile = { source: chainFile.source, path: chainFile.path };
-		// Malformed chain YAML must not crash the inspector (launch fails
-		// closed on it; the view degrades to team: none and still shows
-		// agents/orders).
+		// Malformed chain YAML or an unknown PI_TEAM must not crash the
+		// inspector (launch fails closed on it; the view degrades to
+		// team: none and still shows agents/orders).
 		try {
 			const teams = parseAgentTeams(readFileSync(chainFile.path, "utf-8"));
-			if (teams.size > 0) {
-				const wanted = process.env.PI_TEAM?.trim() || undefined;
-				// An unknown PI_TEAM throws in pickTeam (agent-team.ts fails the
-				// session); the inspector degrades to team: none instead.
-				try {
-					const team = pickTeam(teams, wanted);
-					// PI_TEAM names the active team only when it actually won.
-					const via = wanted && team.name === wanted ? "PI_TEAM" : "default";
-					view.team = { name: team.name, members: [...team.members], via };
-				} catch {
-					view.team = null;
-				}
-			}
+			const wanted = process.env.PI_TEAM?.trim() || undefined;
+			// PI_TEAM names the active team only when it actually won.
+			const team = pickTeam(teams, wanted);
+			const via = wanted && team.name === wanted ? "PI_TEAM" : "default";
+			view.team = { name: team.name, members: [...team.members], via };
 		} catch {
 			view.team = null;
 		}
@@ -98,9 +90,9 @@ export function resolvedAgentsView(
 }
 
 /**
- * The exact grep-friendly `key: value` output (pure — no fs, no env).
- * Per-agent model/thinking come from the PI_OVERLAY role maps keyed on the
- * agent name, else "inherit".
+ * The exact grep-friendly `key: value` output. Deterministic given the view
+ * plus the current PI_OVERLAY (role model/thinking keyed on agent name, else
+ * "inherit") — no fs access.
  */
 export function formatAgentsView(v: ResolvedAgentsView): string {
 	const lines: string[] = [];
@@ -120,7 +112,7 @@ export function formatAgentsView(v: ResolvedAgentsView): string {
 	for (const a of v.agents) {
 		lines.push(`agent: ${a.name}`);
 		lines.push(`  source: ${a.source}`);
-		lines.push(`  path: ${a.path}`);
+		lines.push(`  path: ${a.path ?? ""}`);
 		lines.push(`  tools: ${a.tools.join(", ")}`);
 		lines.push(`  model: ${overlay?.models?.[a.name] ?? "inherit"}`);
 		lines.push(`  thinking: ${overlay?.thinking?.[a.name] ?? "inherit"}`);
