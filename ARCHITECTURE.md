@@ -187,9 +187,14 @@ overrides), keyed on the child's agent name (`planner`, `builder`, `reviewer`,
 - **Diagnostics go to stderr; reports go to stdout.** `doctor_warn` prefixes
   `warning: ` line by line. `--dry-run` prints the argv on stdout and
   `PI_OVERLAY` on stderr.
-- **Herdr is a host, not a dependency.** `herdr agent start <name> --kind pi
-  -- pi-vida <vida>` runs pi-vida inside Herdr; the `herdr` mantra skill
-  no-ops when `HERDR_ENV` is unset.
+- **Herdr is a host with a prompt-only exception (INV-herdr #79, amends
+  #19).** `herdr agent start <name> --kind pi -- pi-vida <vida>` runs
+  pi-vida inside Herdr; `pi-vida <vida> team` under `HERDR_ENV=1` splits one
+  pane per member and dispatches via `herdr agent prompt --wait` / `agent
+  read` against `PI_HERDR_MEMBERS` only. Outside Herdr (or `HERDR_ENV`
+  unset) team dispatch stays hidden-child + kill, and extensions never shell
+  out to `herdr`. The `herdr` mantra skill no-ops when `HERDR_ENV` is
+  unset.
 
 ## Source map
 
@@ -201,6 +206,8 @@ overrides), keyed on the child's agent name (`planner`, `builder`, `reviewer`,
 | Pack manifest resolution | `extensions/installed-skills.ts` |
 | Skill install sources | `packs.yaml`, `scripts/skills-bootstrap.ts` |
 | Child argv contract | `extensions/subagentHelpers.ts` (`buildChildArgv`) |
+| Herdr team panes (INV-herdr) | `libexec/pi-vida-launch` (`start_herdr_team`), `extensions/agent-team.ts` (`herdrDispatch`) |
+| Member persona bootstrap | `extensions/team-member.ts` |
 | Chain/team definitions | `profiles/agents/agent-chain.yaml` |
 | Damage-control rules | `damage-control-rules.yaml` |
 | Domain glossary | `CONTEXT.md` |

@@ -442,6 +442,19 @@ collect_launch_args() {
 
   local skills_home="${PI_SKILLS_HOME:-${HOME}/.agents/skills}"
   skill_names=""
+  # Issue #79: PI_VIDA_WORKER marks a Herdr member pane started by
+  # start_herdr_team. Member base: damage-control + capabilities +
+  # team-member + --no-skills. No boot-config (skips the first-launch
+  # wizard — the primary already owns overlay setup), no clarify-gate
+  # (workers, not a second clarify ritual), no status-line/agent-team.
+  if [[ -n "${PI_VIDA_WORKER:-}" ]]; then
+    pi_args=()
+    local mb
+    while IFS= read -r mb; do
+      pi_args+=("${mb}")
+    done <<< "$(member_base_args "${root}")"
+    return 0
+  fi
   # Issue #15: boot-config runs BEFORE capabilities so its first-launch TUI
   # can update PI_OVERLAY in the same session (handler order = -e order).
   pi_args=(-e "${root}/extensions/damage-control-continue.ts" -e "${root}/extensions/boot-config.ts" -e "${root}/extensions/capabilities.ts" -e "${root}/extensions/clarify-gate.ts" --no-skills -e "${root}/extensions/agents-view.ts")
@@ -542,6 +555,118 @@ collect_launch_args() {
   done <<<"${extras}"
 }
 
+# Member base argv (issue #79): damage-control + capabilities + team-member
+# + --no-skills. No boot-config (the primary owns overlay setup), no
+# clarify-gate (workers, not a second clarify ritual), no status-line, no
+# agent-team. Shared by collect_launch_args (PI_VIDA_WORKER sessions) and
+# member_launch_line (dry-run print) so the contract lives once.
+member_base_args() {
+  printf '%s\n' \
+    "-e" "${1}/extensions/damage-control-continue.ts" \
+    "-e" "${1}/extensions/capabilities.ts" \
+    "-e" "${1}/extensions/team-member.ts" \
+    "--no-skills"
+}
+
+# Dry-run print of the member argv (issue #79). A member runs
+# `pi-vida <vida> solo` — it resolves models.solo/thinking.solo from the
+# merged PI_OVERLAY like any solo session (per-member role maps are a
+# dispatch-time concern of agent-team.ts, not a member-launch flag).
+member_launch_line() {
+  local root="$1" life="$2"
+  local -a member_args=()
+  local arg
+  while IFS= read -r arg; do
+    member_args+=("${arg}")
+  done <<< "$(member_base_args "${root}")"
+  printf 'pi'
+  for arg in "${member_args[@]}"; do
+    printf ' %q' "${arg}"
+  done
+  printf ' pi-vida %s solo' "${life}"
+}
+
+# Issue #79 (INV-herdr): split one pane per team member and start a solo
+# pi-vida in each. Layout is deterministic, not probed: member 1 splits from
+# the current pane to the RIGHT, every following member splits the previous
+# member's pane DOWNWARD — a left column of members next to the dispatcher.
+# ponytail: per-pane layout probing only if panes end up unusable.
+# Env contract for the primary: PI_HERDR_MEMBERS (comma list) so
+# dispatch_agent prompts only these. On any failure: print stderr, exit 2,
+# leave created panes open (the user may want them), never fall back to
+# hidden spawn. Dry-run prints the member lines to stderr and makes no herdr
+# calls (keeps `just smoke` executable inside Herdr).
+start_herdr_team() {
+  local root="$1" life="$2"
+  # Resolve members via the same agents-view the inspector uses — the
+  # active team (PI_TEAM, else default, else first). Resolver failures
+  # propagate (a malformed config is a launch failure, not "no team");
+  # a clean "team: none" is the fail-closed no-active-team case.
+  local members_raw resolver_err
+  resolver_err="$(mktemp)"
+  members_raw="$(bun "${root}/extensions/agents-view.ts" "${PWD}" "${life}" 2>"${resolver_err}" | grep -E '^members: ' | sed 's/^members: //')"
+  local resolver_rc=$?
+  if [[ "${resolver_rc}" -ne 0 ]]; then
+    cat "${resolver_err}" >&2
+    rm -f "${resolver_err}"
+    exit 2
+  fi
+  rm -f "${resolver_err}"
+  if [[ -z "${members_raw}" ]]; then
+    printf 'pi-vida: no active team (no agent-chain.yaml with teams:) — cannot start herdr member panes\n' >&2
+    exit 2
+  fi
+  local -a members
+  IFS=',' read -ra members <<< "${members_raw}"
+  local member i
+  for i in "${!members[@]}"; do
+    members[i]="${members[i]//[[:space:]]/}"
+  done
+
+  if [[ "${dry_run}" -eq 1 ]]; then
+    # Dry-run makes no herdr calls and does not require the binary, so
+    # `just smoke` stays executable on machines without herdr.
+    for member in "${members[@]}"; do
+      printf 'pi-vida: herdr: agent start %s --kind pi -- ' "${member}" >&2
+      member_launch_line "${root}" "${life}" >&2
+      printf '\n' >&2
+    done
+    export PI_HERDR_MEMBERS="$(IFS=,; echo "${members[*]}")"
+    return 0
+  fi
+
+  if ! command -v herdr >/dev/null 2>&1; then
+    printf 'pi-vida: herdr not found on PATH (required for team mode inside Herdr)\n' >&2
+    exit 2
+  fi
+
+  local prev_pane="--current" direction="right"
+  local pane_id out
+  for member in "${members[@]}"; do
+    out="$(herdr pane split "${prev_pane}" --direction "${direction}" --ratio 0.5 --cwd "${PWD}" --env "PI_VIDA_WORKER=${member}" --no-focus 2>&1)" || {
+      printf 'pi-vida: herdr pane split failed for %s: %s\n' "${member}" "${out}" >&2
+      exit 2
+    }
+    pane_id="$(PI_VIDA_HERDR_JSON="${out}" bun -e '
+      try {
+        const v = JSON.parse(process.env.PI_VIDA_HERDR_JSON);
+        process.stdout.write(String(v?.result?.pane?.pane_id ?? ""));
+      } catch {}
+    ' 2>/dev/null || true)"
+    if [[ -z "${pane_id}" ]]; then
+      printf 'pi-vida: herdr pane split returned no pane_id for %s: %s\n' "${member}" "${out}" >&2
+      exit 2
+    fi
+    out="$(herdr agent start "${member}" --kind pi --pane "${pane_id}" -- pi-vida "${life}" solo 2>&1)" || {
+      printf 'pi-vida: herdr agent start failed for %s: %s\n' "${member}" "${out}" >&2
+      exit 2
+    }
+    prev_pane="${pane_id}"
+    direction="down"
+  done
+  PI_HERDR_MEMBERS="$(IFS=,; echo "${members[*]}")"
+}
+
 launch_life() {
   local root="$1" life="$2" mode="$3" dry_run="$4" fusion_stack="${5:-}"
   fusion_stack_used="${fusion_stack}"
@@ -555,6 +680,15 @@ launch_life() {
   else
     [[ -n "${solo_model}" ]] && pi_args+=(--model "${solo_model}")
     [[ -n "${solo_thinking}" ]] && pi_args+=(--thinking "${solo_thinking}")
+  fi
+
+  # Issue #79 (INV-herdr): team mode inside Herdr starts one pane per member
+  # and the primary becomes the dispatcher pane. Fail closed: any pane/agent
+  # failure prints stderr and exits 2 — never a hidden-child fallback in the
+  # same session. Created panes stay open so the user can reuse them.
+  if [[ "${mode}" == "team" && "${HERDR_ENV:-}" == "1" ]]; then
+    start_herdr_team "${root}" "${life}"
+    export PI_HERDR_MEMBERS
   fi
 
   if [[ "${dry_run}" -eq 1 ]]; then

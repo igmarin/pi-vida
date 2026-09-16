@@ -92,7 +92,11 @@ async function withPathPi<T>(
 		const prevVida = process.env.PI_VIDA;
 		const prevHome = process.env.MY_PI_AGENT_HOME;
 		const prevVidaHome = process.env.PI_VIDA_HOME;
+		const prevHerdrEnv = process.env.HERDR_ENV;
 		process.env.PATH = `${dir}${delimiter}${prevPath ?? ""}`;
+		// These tests pin the hidden-child dispatch contract (#79): they must run
+		// the no-herdr path even when bun test itself is launched inside Herdr.
+		delete process.env.HERDR_ENV;
 		delete process.env.PI_LIFE;
 		delete process.env.PI_VIDA;
 		delete process.env.MY_PI_AGENT_HOME;
@@ -103,6 +107,8 @@ async function withPathPi<T>(
 			reap(pidFrom(files.pidFile));
 			if (prevPath === undefined) delete process.env.PATH;
 			else process.env.PATH = prevPath;
+			if (prevHerdrEnv === undefined) delete process.env.HERDR_ENV;
+			else process.env.HERDR_ENV = prevHerdrEnv;
 			if (prevTimeout === undefined) delete process.env.PI_CHILD_TIMEOUT_MS;
 			else process.env.PI_CHILD_TIMEOUT_MS = prevTimeout;
 			if (prevTeam === undefined) delete process.env.PI_TEAM;
@@ -291,6 +297,231 @@ describe("agent-team dispatch", () => {
 				await events.session_shutdown();
 				// Must be dead when shutdown returns — fails if the handler only
 				// abort()s and leaves SIGKILL on a timer the parent might not wait for.
+				expect(alive(pid)).toBe(false);
+				const out = await pending;
+				expect(out.isError).toBe(true);
+			});
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	}, 12_000);
+});
+
+describe("agent-team herdr dispatch (#79)", () => {
+	/** Fake `herdr` on PATH (JSON-free stdout; argv log for assertions).
+	 *  Modes: ok | fail | sleep — same shape as writeFakePi. */
+	function writeFakeHerdr(dir: string, mode: FakePiMode): { logFile: string; herdrPidFile: string } {
+		const logFile = join(dir, "herdr-log.jsonl");
+		const herdrPidFile = join(dir, "herdr-pid");
+		const script = `#!/usr/bin/env bun
+import { appendFileSync, writeFileSync } from "node:fs";
+const mode = ${JSON.stringify(mode)};
+const logFile = ${JSON.stringify(logFile)};
+const pidFile = ${JSON.stringify(herdrPidFile)};
+const args = process.argv.slice(2);
+appendFileSync(logFile, JSON.stringify(args) + "\\n");
+if (args[0] === "agent" && args[1] === "prompt") {
+	if (mode === "fail") {
+		console.error("herdr: prompt rejected (agent_blocked)");
+		process.exit(1);
+	}
+	if (mode === "sleep") {
+		writeFileSync(pidFile, String(process.pid));
+		process.on("SIGTERM", () => {});
+		await Bun.sleep(1e12);
+	}
+	process.exit(0);
+}
+if (args[0] === "agent" && args[1] === "read") {
+	console.log("PANE-OUTPUT: builder finished the task");
+	process.exit(0);
+}
+process.exit(0);
+`;
+		writeFileSync(join(dir, "herdr"), script, { mode: 0o755 });
+		return { logFile, herdrPidFile };
+	}
+
+	async function withPathHerdr<T>(
+		mode: FakePiMode,
+		fn: (files: {
+			dir: string;
+			/** The fake herdr's pid file (herdr prompt sleep mode). */
+			pidFile: string;
+			logFile: string;
+			herdrPidFile: string;
+			piPidFile: string;
+		}) => Promise<T>,
+	): Promise<T> {
+		const run = async () => {
+			const dir = mkdtempSync(join(tmpdir(), "fake-herdr-team-"));
+			const herdrFiles = writeFakeHerdr(dir, mode);
+			const piFiles = writeFakePi(dir, "ok");
+			const prevPath = process.env.PATH;
+			const prevHerdrEnv = process.env.HERDR_ENV;
+			const prevMembers = process.env.PI_HERDR_MEMBERS;
+			const prevTimeout = process.env.PI_CHILD_TIMEOUT_MS;
+			const prevLife = process.env.PI_LIFE;
+			const prevVida = process.env.PI_VIDA;
+			const prevHome = process.env.MY_PI_AGENT_HOME;
+			const prevVidaHome = process.env.PI_VIDA_HOME;
+			process.env.PATH = `${dir}${delimiter}${prevPath ?? ""}`;
+			process.env.HERDR_ENV = "1";
+			process.env.PI_HERDR_MEMBERS = "builder";
+			delete process.env.PI_LIFE;
+			delete process.env.PI_VIDA;
+			delete process.env.MY_PI_AGENT_HOME;
+			delete process.env.PI_VIDA_HOME;
+			try {
+				return await fn({ dir, pidFile: herdrFiles.herdrPidFile, logFile: herdrFiles.logFile, herdrPidFile: herdrFiles.herdrPidFile, piPidFile: piFiles.pidFile });
+			} finally {
+				reap(pidFrom(herdrFiles.herdrPidFile));
+				reap(pidFrom(piFiles.pidFile));
+				if (prevPath === undefined) delete process.env.PATH;
+				else process.env.PATH = prevPath;
+				if (prevHerdrEnv === undefined) delete process.env.HERDR_ENV;
+				else process.env.HERDR_ENV = prevHerdrEnv;
+				if (prevMembers === undefined) delete process.env.PI_HERDR_MEMBERS;
+				else process.env.PI_HERDR_MEMBERS = prevMembers;
+				if (prevTimeout === undefined) delete process.env.PI_CHILD_TIMEOUT_MS;
+				else process.env.PI_CHILD_TIMEOUT_MS = prevTimeout;
+				if (prevLife === undefined) delete process.env.PI_LIFE;
+				else process.env.PI_LIFE = prevLife;
+				if (prevVida === undefined) delete process.env.PI_VIDA;
+				else process.env.PI_VIDA = prevVida;
+				if (prevHome === undefined) delete process.env.MY_PI_AGENT_HOME;
+				else process.env.MY_PI_AGENT_HOME = prevHome;
+				if (prevVidaHome === undefined) delete process.env.PI_VIDA_HOME;
+				else process.env.PI_VIDA_HOME = prevVidaHome;
+				rmSync(dir, { recursive: true, force: true });
+			}
+		};
+		const prev = gPath.__piFakePathChain ?? Promise.resolve();
+		const curr = prev.then(run, run);
+		gPath.__piFakePathChain = curr.then(
+			() => {},
+			() => {},
+		);
+		return curr;
+	}
+
+	function logCalls(logFile: string): string[][] {
+		if (!existsSync(logFile)) return [];
+		return readFileSync(logFile, "utf8")
+			.trim()
+			.split("\n")
+			.filter(Boolean)
+			.map((line) => JSON.parse(line) as string[]);
+	}
+
+	test("allowed member prompts via herdr and reads the pane", async () => {
+		const cwd = teamCwd();
+		try {
+			await withPathHerdr("ok", async ({ logFile }) => {
+				const { tools } = loadTeam();
+				const out = await tools.dispatch_agent.execute(
+					"id",
+					{ agent: "builder", task: "build it" },
+					new AbortController().signal,
+					undefined,
+					ctxOf(cwd),
+				);
+				expect(out.isError).toBeFalsy();
+				expect(out.content[0].text).toContain("PANE-OUTPUT: builder finished the task");
+				const calls = logCalls(logFile);
+				const prompt = calls.find((c) => c[0] === "agent" && c[1] === "prompt");
+				expect(prompt).toBeDefined();
+				expect(prompt![2]).toBe("builder");
+				expect(prompt![3]).toBe("build it");
+				expect(prompt).toContain("--wait");
+				const read = calls.find((c) => c[0] === "agent" && c[1] === "read");
+				expect(read![2]).toBe("builder");
+				expect(read).toContain("--source");
+				expect(read).toContain("recent-unwrapped");
+			});
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	test("member outside PI_HERDR_MEMBERS is a clear error, herdr untouched", async () => {
+		const cwd = teamCwd();
+		try {
+			await withPathHerdr("ok", async ({ logFile }) => {
+				const { tools } = loadTeam();
+				const out = await tools.dispatch_agent.execute(
+					"id",
+					{ agent: "researcher", task: "research it" },
+					new AbortController().signal,
+					undefined,
+					ctxOf(cwd),
+				);
+				expect(out.isError).toBe(true);
+				expect(out.content[0].text).toMatch(/researcher/);
+				expect(out.content[0].text).toMatch(/builder/);
+				expect(logCalls(logFile)).toEqual([]);
+			});
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	test("herdr prompt failure is a tool error with stderr", async () => {
+		const cwd = teamCwd();
+		try {
+			await withPathHerdr("fail", async () => {
+				const { tools } = loadTeam();
+				const out = await tools.dispatch_agent.execute(
+					"id",
+					{ agent: "builder", task: "build it" },
+					new AbortController().signal,
+					undefined,
+					ctxOf(cwd),
+				);
+				expect(out.isError).toBe(true);
+				expect(out.content[0].text).toContain("agent_blocked");
+			});
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	test("HERDR_ENV unset keeps the hidden-child path, herdr never invoked", async () => {
+		const cwd = teamCwd();
+		try {
+			await withPathHerdr("ok", async ({ logFile }) => {
+				delete process.env.HERDR_ENV;
+				const { tools } = loadTeam();
+				const out = await tools.dispatch_agent.execute(
+					"id",
+					{ agent: "builder", task: "build it" },
+					new AbortController().signal,
+					undefined,
+					ctxOf(cwd),
+				);
+				expect(out.isError).toBeFalsy();
+				expect(out.content[0].text).toContain("hello from child");
+				expect(existsSync(logFile)).toBe(false);
+			});
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	test("session_shutdown aborts an in-flight herdr prompt", async () => {
+		const cwd = teamCwd();
+		try {
+			await withPathHerdr("sleep", async ({ pidFile }) => {
+				const { tools, events } = loadTeam();
+				const pending = tools.dispatch_agent.execute(
+					"id",
+					{ agent: "builder", task: "hang" },
+					new AbortController().signal,
+					undefined,
+					ctxOf(cwd),
+				);
+				const pid = await waitFile(pidFile);
+				await events.session_shutdown();
 				expect(alive(pid)).toBe(false);
 				const out = await pending;
 				expect(out.isError).toBe(true);

@@ -104,6 +104,17 @@ smoke:
     echo "${rust_chain_out}" | grep -q -- "-e ${root}/extensions/agents-view.ts"
     echo "${rust_team_out}" | grep -q -- "-e ${root}/extensions/agents-view.ts"
 
+    # Issue #79 (INV-herdr): team dry-run inside Herdr prints one
+    # `herdr agent start` per member on stderr and makes no herdr calls.
+    herdr_team_err="${tmp}/herdr-team.err"
+    HERDR_ENV=1 "${bin}" --dry-run rust team 2>"${herdr_team_err}" >/dev/null
+    for member in planner builder reviewer researcher; do
+      grep -qE "pi-vida: herdr: agent start ${member} --kind pi -- .* --no-skills pi-vida rust solo" "${herdr_team_err}"
+    done
+    # Outside-Herdr primary argv is unchanged: dispatcher, not member base.
+    echo "${rust_team_out}" | grep -q -- "-e ${root}/extensions/agent-team.ts"
+    ! grep -q -- "team-member.ts" <<<"${rust_team_out}"
+
     # (p) fusion mode loads the vendored multi-model extension with an
     # explicit stack file; solo/team/chain argv never carry it.
     fusion_stack="${tmp}/model-stack-trio.yaml"
