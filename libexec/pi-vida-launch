@@ -8,6 +8,7 @@ usage() {
 Usage: pi-vida [--dry-run] <vida> [solo|chain|team|fusion <stack.yaml>]
        pi-vida doctor [vida]
        pi-vida doctor-probe
+       pi-vida agents <vida>
        pi-vida --dump-overlay <cwd>
        pi-vida --help
 
@@ -421,8 +422,13 @@ merge_overlay_roles() {
   )
 }
 
-launch_life() {
-  local root="$1" life="$2" mode="$3" dry_run="$4" fusion_stack="${5:-}"
+# Globals set: pi_args skill_names solo_model solo_thinking. Extracted from
+# launch_life (issue #81) so `pi-vida agents` resolves skills/overlay through
+# the exact same code path launch does — same resolver by construction, not a
+# copy. mode: solo | chain | team | fusion (mode-specific -e flags included;
+# fusion reads the caller-set global fusion_stack_used).
+collect_launch_args() {
+  local root="$1" life="$2" mode="$3"
   local profile="${root}/profiles/${life}.yaml"
   if [[ ! -f "${profile}" ]]; then
     printf 'pi-vida: missing profile %s\n' "${profile}" >&2
@@ -459,11 +465,11 @@ launch_life() {
   # must exist; the extension itself validates slots, auth, and provider
   # visibility at startup. Modes are exclusive by construction.
   if [[ "${mode}" == "fusion" ]]; then
-    if [[ ! -f "${fusion_stack}" ]]; then
-      printf 'pi-vida: fusion stack not found: %s\n' "${fusion_stack}" >&2
+    if [[ ! -f "${fusion_stack_used:-}" ]]; then
+      printf 'pi-vida: fusion stack not found: %s\n' "${fusion_stack_used:-}" >&2
       exit 2
     fi
-    pi_args+=(-e "${root}/extensions/fusion-harness/fusion-harness.ts" --fh-config "${fusion_stack}")
+    pi_args+=(-e "${root}/extensions/fusion-harness/fusion-harness.ts" --fh-config "${fusion_stack_used:-}")
   fi
 
   local rows
@@ -520,7 +526,7 @@ launch_life() {
   # One captured overlay_extras call serves all three: the command substitution
   # (not a process substitution) is what makes a failed bun spawn fail the
   # launch closed instead of silently dropping overlay-derived args.
-  local solo_model="${profile_solo_model}" solo_thinking="${profile_solo_thinking}"
+  solo_model="${profile_solo_model}" solo_thinking="${profile_solo_thinking}"
   local extras=""
   if [[ "${PI_OVERLAY_EXISTS:-}" == "1" ]]; then
     extras="$(overlay_extras "${PWD}")" || exit 2
@@ -534,6 +540,12 @@ launch_life() {
       thinking) solo_thinking="${extras_value}" ;;
     esac
   done <<<"${extras}"
+}
+
+launch_life() {
+  local root="$1" life="$2" mode="$3" dry_run="$4" fusion_stack="${5:-}"
+  fusion_stack_used="${fusion_stack}"
+  collect_launch_args "${root}" "${life}" "${mode}"
   if [[ "${mode}" == "fusion" ]]; then
     # The stack's primary slot becomes the host model at startup; a solo
     # override would only churn the session before the switch — warn + drop.
@@ -707,6 +719,55 @@ main() {
       fi
       check_excludesfile
       exit $?
+      ;;
+    agents)
+      # Issue #81: print the resolved agents view for cwd + vida — winner,
+      # shadows, team, chain file, both discovery orders, and the resolved
+      # skill paths. Reuses collect_launch_args so the skill list comes from
+      # the exact code path launch uses (same resolver by construction).
+      # Missing mantra/tracker exit 2 and missing-pack warnings inherit
+      # add_named_skill — identical to launch, intentionally.
+      if [[ $# -gt 2 ]]; then
+        printf 'pi-vida: unexpected argument: %s\n' "${3}" >&2
+        usage >&2
+        exit 2
+      fi
+      local agents_raw="${2:-${PI_VIDA:-${PI_LIFE:-}}}"
+      if [[ -z "${agents_raw}" ]]; then
+        printf 'pi-vida: agents requires a vida argument\n' >&2
+        usage >&2
+        exit 2
+      fi
+      local agents_status=0
+      local agents_life
+      agents_life="$(canonical_life "${agents_raw}")" || agents_status=$?
+      if [[ "${agents_status}" -eq 2 ]]; then
+        exit 2
+      fi
+      if [[ "${agents_status}" -ne 0 ]]; then
+        printf 'pi-vida: unknown vida %s\n' "${agents_raw}" >&2
+        usage >&2
+        exit 2
+      fi
+      local agents_root
+      # Command substitution is the fail-closed mechanism (same convention as
+      # the overlay_extras capture below/above): a failed resolve_root cannot
+      # flow into a confusing secondary "missing profile" error.
+      agents_root="$(resolve_root)" || exit 2
+      collect_launch_args "${agents_root}" "${agents_life}" solo
+      # Load agents-view.ts from the resolved harness root (PI_VIDA_HOME et al
+      # honored) so the module, the resolver, and launch all see one tree.
+      bun "${agents_root}/extensions/agents-view.ts" "${PWD}" "${agents_life}" || exit 2
+      local skill_arg next_is_skill=0
+      for skill_arg in "${pi_args[@]}"; do
+        if [[ "${next_is_skill}" -eq 1 ]]; then
+          printf 'skill: %s\n' "${skill_arg}"
+          next_is_skill=0
+        elif [[ "${skill_arg}" == "--skill" ]]; then
+          next_is_skill=1
+        fi
+      done
+      exit 0
       ;;
     --dump-overlay)
       # Print the overlay for <cwd> as a single JSON line on stdout. Used by

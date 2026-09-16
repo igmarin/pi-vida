@@ -421,8 +421,9 @@ pub fn parse_args(args: &[String]) -> Invocation {
         return Invocation::Bash;
     }
     let first = rest[0].as_str();
-    // doctor / doctor-probe / --dump-overlay stay bash (design §2).
-    if first == "doctor" || first == "doctor-probe" || first == "--dump-overlay" {
+    // doctor / doctor-probe / --dump-overlay / agents stay bash (design §2;
+    // agents is issue #81's bash subcommand).
+    if first == "doctor" || first == "doctor-probe" || first == "--dump-overlay" || first == "agents" {
         return Invocation::Bash;
     }
     if let Some(msg) = rejected_vida(first) {
@@ -636,7 +637,7 @@ mod tests {
 
     #[test]
     fn doctor_and_dump_overlay_stay_bash() {
-        for first in ["doctor", "doctor-probe"] {
+        for first in ["doctor", "doctor-probe", "agents"] {
             let args: Vec<String> = [first, "ruby"].iter().map(|s| s.to_string()).collect();
             assert_eq!(parse_args(&args), Invocation::Bash);
         }

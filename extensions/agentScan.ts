@@ -5,7 +5,7 @@
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
@@ -19,12 +19,18 @@ export type AgentDef = {
 	tools: string[];
 	body: string;
 	source: string;
+	/** Absolute file path this agent was parsed from. */
+	path: string;
 };
 export type SourceGroup = {
 	source: string;
 	commands: Discovered[];
 	skills: Discovered[];
 	agents: AgentDef[];
+	/** Agents dropped by first-wins because a winner earlier in the shared
+	 * discovery order (this or a preceding group) already claimed the name
+	 * (issue #81: the inspector lists them as shadows). */
+	shadowed: AgentDef[];
 };
 
 export function canonicalLife(raw: string | undefined): string | undefined {
@@ -36,8 +42,14 @@ export function canonicalLife(raw: string | undefined): string | undefined {
 	return undefined;
 }
 
-function harnessRoot(extFileUrl: string): string {
-	return process.env.PI_VIDA_HOME || process.env.PI_LIFE_HOME || process.env.MY_PI_AGENT_HOME || join(dirname(fileURLToPath(extFileUrl)), "..");
+/** Single harness-root resolver (issue #81 re-review): PI_VIDA_HOME, else
+ * PI_LIFE_HOME, else MY_PI_AGENT_HOME, else the parent of the directory
+ * containing extFileUrl (the harness checkout). Normalized to an absolute
+ * path so a relative env override cannot make the view, chain candidates,
+ * and child extension paths disagree. discover, agentSources, agent-chain's
+ * harnessChainPath, and agents-view all consume this one implementation. */
+export function harnessRoot(extFileUrl = import.meta.url): string {
+	return resolve(process.env.PI_VIDA_HOME || process.env.PI_LIFE_HOME || process.env.MY_PI_AGENT_HOME || join(dirname(fileURLToPath(extFileUrl)), ".."));
 }
 
 function str(v: unknown): string {
@@ -131,6 +143,7 @@ function agentFromMd(path: string, source: string): AgentDef | null {
 			tools: toolsOf(fields.tools),
 			body: body.trim(),
 			source,
+			path,
 		};
 	} catch (e) {
 		console.warn("agentScan: agent md skipped:", path, errText(e));
@@ -149,7 +162,7 @@ function agentFromYaml(path: string, source: string): AgentDef | null {
 		const body = typeof rec.body === "string" ? rec.body : typeof rec.prompt === "string" ? rec.prompt : "";
 		const hasContent = [rec.name, rec.description, rec.body, rec.prompt].some((v) => typeof v === "string" && v.trim());
 		if (!hasContent) return null;
-		return { name, description, tools: toolsOf(rec.tools), body: body.trim(), source };
+		return { name, description, tools: toolsOf(rec.tools), body: body.trim(), source, path };
 	} catch (e) {
 		console.warn("agentScan: agent yaml skipped:", path, errText(e));
 		return null;
@@ -176,38 +189,56 @@ function scanAgents(dir: string, source: string): AgentDef[] {
 	return items;
 }
 
-function take<T extends { name: string }>(items: T[], seen: Set<string>, key = (n: string) => n): T[] {
+function take<T extends { name: string }>(
+	items: T[],
+	seen: Set<string>,
+	key = (n: string) => n,
+	dropped?: T[],
+): T[] {
 	const out: T[] = [];
 	for (const item of items) {
 		const k = key(item.name);
-		if (seen.has(k)) continue;
+		if (seen.has(k)) {
+			dropped?.push(item);
+			continue;
+		}
 		seen.add(k);
 		out.push(item);
 	}
 	return out;
 }
 
-export function discover(cwd: string, extFileUrl: string, home = homedir()): SourceGroup[] {
-	const root = harnessRoot(extFileUrl);
-	const rawLife = process.env.PI_VIDA || process.env.PI_LIFE;
-	const life = rawLife ? canonicalLife(rawLife) : undefined;
-	if (rawLife && !life) return []; // invalid PI_VIDA / PI_LIFE fails closed, not broad
+/**
+ * The agent source specs discover() walks, in first-wins order — the single
+ * source of truth for the order display (issue #81). Prefixless entries are
+ * candidates; discover() prefixes the ones that exist on disk with `*`.
+ */
+export function agentSources(
+	root: string,
+	life: string | undefined,
+	cwd: string,
+	home: string,
+): { source: string; agents: string; commands?: string; skills?: string }[] {
+	// Normalize the bases so AgentDef.path is absolute even when a caller
+	// passes a relative cwd/root (or an env override holds a relative path).
+	const rootDir = resolve(root);
+	const cwdDir = resolve(cwd);
+	const homeDir = resolve(home);
 	const lives = life ? [life] : [...LIVES];
-	const specs: { source: string; commands?: string; skills?: string; agents: string }[] = [
-		...lives.map((l) => ({
+	const specs: { source: string; agents: string; commands?: string; skills?: string }[] =
+		lives.map((l) => ({
 			source: `profiles/${l}/agents`,
-			agents: join(root, "profiles", l, "agents"),
-		})),
-		{ source: "profiles/agents", agents: join(root, "profiles", "agents") },
-	];
+			agents: join(rootDir, "profiles", l, "agents"),
+		}));
+	specs.push({ source: "profiles/agents", agents: join(rootDir, "profiles", "agents") });
 	specs.push({
 		source: ".pi/agents",
-		commands: join(cwd, ".pi", "commands"),
-		skills: join(cwd, ".pi", "skills"),
-		agents: join(cwd, ".pi", "agents"),
+		commands: join(cwdDir, ".pi", "commands"),
+		skills: join(cwdDir, ".pi", "skills"),
+		agents: join(cwdDir, ".pi", "agents"),
 	});
 	for (const p of PROVIDERS) {
-		const dir = join(cwd, `.${p}`);
+		const dir = join(cwdDir, `.${p}`);
 		specs.push({
 			source: `.${p}`,
 			commands: join(dir, "commands"),
@@ -216,7 +247,7 @@ export function discover(cwd: string, extFileUrl: string, home = homedir()): Sou
 		});
 	}
 	for (const p of PROVIDERS) {
-		const dir = join(home, `.${p}`);
+		const dir = join(homeDir, `.${p}`);
 		specs.push({
 			source: `~/.${p}`,
 			commands: join(dir, "commands"),
@@ -224,6 +255,19 @@ export function discover(cwd: string, extFileUrl: string, home = homedir()): Sou
 			agents: join(dir, "agents"),
 		});
 	}
+	return specs;
+}
+
+export function discover(
+	cwd: string,
+	extFileUrl: string,
+	home = homedir(),
+	vidaRaw: string | undefined = process.env.PI_VIDA || process.env.PI_LIFE,
+): SourceGroup[] {
+	const root = harnessRoot(extFileUrl);
+	const life = vidaRaw ? canonicalLife(vidaRaw) : undefined;
+	if (vidaRaw && !life) return []; // invalid PI_VIDA / PI_LIFE fails closed, not broad
+	const specs = agentSources(root, life, cwd, home);
 
 	const seenCmd = new Set<string>();
 	const seenSkill = new Set<string>();
@@ -232,9 +276,10 @@ export function discover(cwd: string, extFileUrl: string, home = homedir()): Sou
 	for (const spec of specs) {
 		const commands = spec.commands ? take(scanCommands(spec.commands), seenCmd) : [];
 		const skills = spec.skills ? take(scanSkills(spec.skills), seenSkill) : [];
-		const agents = take(scanAgents(spec.agents, spec.source), seenAgent, (n) => n.toLowerCase());
-		if (commands.length || skills.length || agents.length) {
-			groups.push({ source: spec.source, commands, skills, agents });
+		const dropped: AgentDef[] = [];
+		const agents = take(scanAgents(spec.agents, spec.source), seenAgent, (n) => n.toLowerCase(), dropped);
+		if (commands.length || skills.length || agents.length || dropped.length) {
+			groups.push({ source: spec.source, commands, skills, agents, shadowed: dropped });
 		}
 	}
 	return groups;

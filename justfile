@@ -699,7 +699,66 @@ smoke:
       }
       console.log("agent-chain default chain ok");
     '
-    bun test "{{root}}/extensions/agentScan.test.ts" "{{root}}/extensions/capabilities.test.ts" "{{root}}/extensions/boot-config.test.ts" "{{root}}/extensions/clarify-gate.test.ts" "{{root}}/extensions/agent-chain.test.ts" "{{root}}/extensions/agent-team.test.ts" "{{root}}/extensions/subagent.test.ts" "{{root}}/extensions/installed-skills.test.ts" "{{root}}/extensions/fusion-harness/tests" "{{root}}/scripts/skills-bootstrap.test.ts"
+    # Issue #81: pi-vida agents <vida> — the resolved view from a temp cwd.
+    # Lives under ${tmp} so the existing EXIT trap cleans it up on failure.
+    agents_cwd="${tmp}/agents-cwd"
+    mkdir -p "${agents_cwd}"
+    agents_out="$(cd "${agents_cwd}" && MY_PI_AGENT_HOME="{{root}}" PI_SKILLS_HOME="${tmp}" "${bin}" agents ruby 2>"${tmp}/agents.err")"
+    grep -q '^vida: ruby$' <<<"${agents_out}"
+    grep -q 'profiles/agents/planner.yaml' <<<"${agents_out}"
+    grep -q '^agent-order: ' <<<"${agents_out}"
+    grep -q '^chain-order: ' <<<"${agents_out}"
+    grep -q -- "^skill: ${tmp}/i-have-adhd$" <<<"${agents_out}"
+    grep -q '^team: default (default)$' <<<"${agents_out}"
+    # First-wins winner comes from the harness; the project builder is listed
+    # as shadowed (the issue example had this backwards; discover() order is
+    # profiles/<vida>/agents -> profiles/agents -> .pi/agents, unchanged).
+    mkdir -p "${agents_cwd}/.pi/agents"
+    printf '%s\n' 'name: builder' 'description: project builder' 'body: |' '  PROJECT' >"${agents_cwd}/.pi/agents/builder.yaml"
+    agents_shadow_out="$(cd "${agents_cwd}" && MY_PI_AGENT_HOME="{{root}}" PI_SKILLS_HOME="${tmp}" "${bin}" agents ruby 2>/dev/null)"
+    grep -q 'profiles/agents/builder.yaml' <<<"${agents_shadow_out}"
+    grep -q -- "  shadows: ${agents_cwd}/.pi/agents/builder.yaml" <<<"${agents_shadow_out}"
+    # Unknown vida exits 2 with the same message launch prints.
+    status=0
+    agents_bad="$(cd "${agents_cwd}" && MY_PI_AGENT_HOME="{{root}}" PI_SKILLS_HOME="${tmp}" "${bin}" agents nosuch 2>&1)" || status=$?
+    test "${status}" -eq 2
+    grep -q 'unknown vida nosuch' <<<"${agents_bad}"
+    # Alias rejection (canonical_life exit-2 branch): same messages as launch.
+    status=0
+    agents_bad="$(cd "${agents_cwd}" && MY_PI_AGENT_HOME="{{root}}" PI_SKILLS_HOME="${tmp}" "${bin}" agents rails-python 2>&1)" || status=$?
+    test "${status}" -eq 2
+    grep -q 'not a vida' <<<"${agents_bad}"
+    grep -q 'use ruby or python' <<<"${agents_bad}"
+    # Per-agent model/thinking reflect the MERGED role payload (profile
+    # defaults folded under overlay overrides by collect_launch_args), not
+    # the raw project overlay — the same map children dispatch from.
+    # builder is profile-only (proves gap-fill: not "inherit"), planner is
+    # overridden by the overlay (proves overlay wins per role). agents-view.ts
+    # loads from the resolved root, so the fixture itself carries the module
+    # tree piece the resolver needs.
+    agents_prof="${tmp}/agents-prof"
+    mkdir -p "${agents_prof}/profiles/python/agents" "${agents_prof}/i-have-adhd" "${agents_prof}/agents-cwd/.pi"
+    printf '%s\n' '# i-have-adhd' >"${agents_prof}/i-have-adhd/SKILL.md"
+    printf '%s\n' 'name: planner' 'description: p' 'tools: read' 'body: PLAN' >"${agents_prof}/profiles/python/agents/planner.yaml"
+    printf '%s\n' 'name: builder' 'description: b' 'tools: read' 'body: BUILD' >"${agents_prof}/profiles/python/agents/builder.yaml"
+    printf '%s\n' 'vida: python' 'tracker: none' 'packs: []' 'mantra: [i-have-adhd]' \
+      'models:' '  planner: openrouter/profile-planner' '  builder: openrouter/profile-builder' >"${agents_prof}/profiles/python.yaml"
+    printf '%s\n' 'models:' '  planner: openrouter/overlay-planner' >"${agents_prof}/agents-cwd/.pi/capabilities.yaml"
+    ln -s "{{root}}/extensions" "${agents_prof}/extensions"
+    agents_merge_out="$(cd "${agents_prof}/agents-cwd" && MY_PI_AGENT_HOME="${agents_prof}" PI_SKILLS_HOME="${agents_prof}" "${bin}" agents python 2>/dev/null)"
+    grep -q -- '  model: openrouter/overlay-planner' <<<"${agents_merge_out}"
+    grep -q -- '  model: openrouter/profile-builder' <<<"${agents_merge_out}"
+    ! grep -q 'openrouter/profile-planner' <<<"${agents_merge_out}"
+    rm -rf "${agents_prof}"
+    # Fail-closed parity: a missing required mantra path exits 2, exactly
+    # like launch (docs/how-to.md promises this).
+    agents_noskill="$(mktemp -d)"
+    status=0
+    out="$(cd "${agents_cwd}" && MY_PI_AGENT_HOME="{{root}}" PI_SKILLS_HOME="${agents_noskill}" "${bin}" agents ruby 2>&1)" || status=$?
+    test "${status}" -eq 2
+    grep -q 'missing required mantra' <<<"${out}"
+    rm -rf "${agents_noskill}"
+    bun test "{{root}}/extensions/agentScan.test.ts" "{{root}}/extensions/capabilities.test.ts" "{{root}}/extensions/boot-config.test.ts" "{{root}}/extensions/clarify-gate.test.ts" "{{root}}/extensions/agent-chain.test.ts" "{{root}}/extensions/agent-team.test.ts" "{{root}}/extensions/subagent.test.ts" "{{root}}/extensions/agents-view.test.ts" "{{root}}/extensions/installed-skills.test.ts" "{{root}}/extensions/fusion-harness/tests" "{{root}}/scripts/skills-bootstrap.test.ts"
     bun build "{{root}}/extensions/themeMap.ts" "{{root}}/extensions/minimal.ts" "{{root}}/extensions/purpose-gate.ts" \
       "{{root}}/extensions/cross-agent.ts" "{{root}}/extensions/system-select.ts" \
       "{{root}}/extensions/damage-control-continue.ts" \
@@ -708,6 +767,7 @@ smoke:
       "{{root}}/extensions/clarify-gate.ts" \
       "{{root}}/extensions/agent-chain.ts" \
       "{{root}}/extensions/agent-team.ts" \
+      "{{root}}/extensions/agents-view.ts" \
       "{{root}}/extensions/status-line.ts" \
       "{{root}}/extensions/subagent.ts" "{{root}}/extensions/subagentHelpers.ts" \
       "{{root}}/extensions/installed-skills.ts" \
