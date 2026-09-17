@@ -166,7 +166,7 @@ render UI check `ctx.hasUI` and no-op in print/JSON mode.
 
 | Extension | Owns | Does not own |
 |---|---|---|
-| `damage-control-continue.ts` | Tool-call gate: blocked tools get feedback, the turn continues (no `ctx.abort()`). Rules from `<cwd>/.pi/damage-control-rules.yaml` when present (project override), else harness `damage-control-rules.yaml`; an invalid project file warns and falls back. | Skill selection, launch args |
+| `damage-control-continue.ts` | Tool-call gate: blocked tools get feedback, the turn continues (no `ctx.abort()`). Malformed input fails closed too — a bash call with a missing/empty `command` blocks with a reason, it never throws or silently allows. Rules from `<cwd>/.pi/damage-control-rules.yaml` when present (project override), else harness `damage-control-rules.yaml`; an invalid project file warns and falls back. | Skill selection, launch args |
 | `boot-config.ts` | First-launch wizard: writes `.pi/capabilities.yaml` on confirm, updates `PI_OVERLAY` in-session, applies solo model/thinking. Skipped when `PI_OVERLAY_EXISTS=1` or no UI. | Overlay parsing (that is `capabilities.ts`) |
 | `capabilities.ts` | Overlay schema and parser (`parseOverlayDoc`, strict: unknown keys and non-booleans throw), role-map validation shared with `read_profile`, prompt-gate entry point. | Writing the overlay file |
 | `clarify-gate.ts` | Blocks `write`/`edit` until `/clarify`; read-only tools stay open. Per-session, opens permanently. Skipped without UI. | Prompt content (the `clarify` skill drives that) |
