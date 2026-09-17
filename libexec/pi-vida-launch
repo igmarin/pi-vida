@@ -293,7 +293,7 @@ read_overlay() {
   # no-overlay launch. EMPTY_OVERLAY is the canonical all-off payload; the
   # bun path below produces the same value for verification.
   if [[ ! -f "${cwd}/.pi/capabilities.yaml" ]]; then
-    printf '%s\n' '{"capabilities":{"graphify":false,"codegraph":false,"serena":false,"rs-guard":false,"obscura":false,"playwright":false},"extraSkills":[],"trackerSkill":null}'
+    printf '%s\n' '{"capabilities":{"graphify":false,"codegraph":false,"serena":false,"rs-guard":false,"obscura":false,"playwright":false,"compaction":false},"extraSkills":[],"trackerSkill":null}'
     return 0
   fi
   (
@@ -414,8 +414,8 @@ overlay_extras() {
       if (overlay.trackerSkill) process.stdout.write("skill\t" + resolve(overlay.trackerSkill) + "\n");
       const soloModel = overlay.models?.solo;
       const soloThinking = overlay.thinking?.solo;
-      if (soloModel) process.stdout.write("model\t" + soloModel + "\n");
       if (soloThinking) process.stdout.write("thinking\t" + soloThinking + "\n");
+      if (overlay.capabilities.compaction) process.stdout.write("compaction\ton\n");
     '
   )
 }
@@ -561,6 +561,7 @@ collect_launch_args() {
   # (not a process substitution) is what makes a failed bun spawn fail the
   # launch closed instead of silently dropping overlay-derived args.
   solo_model="${profile_solo_model}" solo_thinking="${profile_solo_thinking}"
+  compaction_on=0
   local extras=""
   if [[ "${PI_OVERLAY_EXISTS:-}" == "1" ]]; then
     extras="$(overlay_extras "${PWD}")" || exit 2
@@ -572,8 +573,15 @@ collect_launch_args() {
       skill) add_overlay_skill overlay "${extras_value}" ;;
       model) solo_model="${extras_value}" ;;
       thinking) solo_thinking="${extras_value}" ;;
+      compaction) [[ "${extras_value}" == "on" ]] && compaction_on=1 ;;
     esac
   done <<<"${extras}"
+  # Issue #115: agentic compaction is opt-in via the overlay's `compaction`
+  # capability. Loaded after capabilities.ts (never before damage-control);
+  # workers (member base) never inherit it.
+  if [[ "${compaction_on}" -eq 1 ]]; then
+    pi_args+=(-e "${root}/extensions/agentic-compaction/agentic-compaction.ts")
+  fi
 }
 
 # Member base argv (issue #79): damage-control + capabilities + team-member

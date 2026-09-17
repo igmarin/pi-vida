@@ -19,6 +19,7 @@ export const CAPABILITY_KEYS = [
 	"rs-guard",
 	"obscura",
 	"playwright",
+	"compaction",
 ] as const;
 export type CapabilityKey = (typeof CAPABILITY_KEYS)[number];
 

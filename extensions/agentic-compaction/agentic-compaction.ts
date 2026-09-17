@@ -385,13 +385,30 @@ function loadCompactionModelConfig(cwd: string): LoadedCompactionConfig {
         };
     }
 
+    // Issue #115: no persisted choice — consult the overlay solo model
+    // first (machine-local prefs stay in settings.json; overlay is the
+    // committed per-repo role map). Falls back to hardcoded defaults.
+    const overlaySolo = readOverlaySoloModel();
+    const defaults = overlaySolo ? [overlaySolo, ...getDefaultCompactionModelIds()] : getDefaultCompactionModelIds();
     return {
-        models: getDefaultCompactionModelIds(),
+        models: defaults,
         source: "default",
         globalRead,
         projectRead,
         paths,
     };
+}
+
+function readOverlaySoloModel(): string | undefined {
+    const raw = process.env.PI_OVERLAY;
+    if (!raw) return undefined;
+    try {
+        const doc = JSON.parse(raw) as { models?: Record<string, string> };
+        const solo = doc?.models?.solo;
+        return typeof solo === "string" && parseFullModelId(solo) ? solo.trim() : undefined;
+    } catch {
+        return undefined;
+    }
 }
 
 function chooseSaveScope(config: LoadedCompactionConfig): ConfigScope {

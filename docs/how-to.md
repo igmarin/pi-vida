@@ -42,7 +42,7 @@ pi-vida ruby          # solo mode (default)
 Two things happen on the first launch in a repo:
 
 1. **Clarify gate**: `write`/`edit` are blocked until you run `/clarify` to accept the prompt. Read-only tools stay available so the model can explore. (Three different things share the word "clarify": the `/clarify` **command** opens the gate; the `clarify` **skill** and `requirements-clarifier` **skill** are the always-on mantra skills that help the model refine your prompt. Only the command is something you interact with directly.)
-2. **Boot TUI** (only when `.pi/capabilities.yaml` does not exist): the six capability toggles (graphify, codegraph, serena, rs-guard, obscura, playwright) and optional per-role model/thinking. Saving is explicit; a cancelled prompt skips the write.
+2. **Boot TUI** (only when `.pi/capabilities.yaml` does not exist): the seven capability toggles (graphify, codegraph, serena, rs-guard, obscura, playwright, compaction) and optional per-role model/thinking. Saving is explicit; a cancelled prompt skips the write.
 
 Second launch with a saved overlay: no TUI. The overlay's `models.solo`/`thinking.solo` become `pi --model`/`--thinking`.
 
