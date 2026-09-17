@@ -225,49 +225,53 @@ export default function (pi: ExtensionAPI) {
 
 		if (!violationReason && isToolCallEventType("bash", event)) {
 			const command = event.input.command;
-			for (const rule of rules.bashToolPatterns) {
-				if (rule.re.test(command)) {
-					violationReason = rule.reason;
-					shouldAsk = !!rule.ask;
-					break;
-				}
-			}
-			if (!violationReason) {
-				const tokens = command.split(/\s+/).map(stripToken).filter(Boolean);
-				for (const tok of tokens) {
-					const resolved = resolvePath(tok, ctx.cwd);
-					for (const zap of rules.zeroAccessPaths) {
-						if (isPathMatch(resolved, zap, ctx.cwd) || isPathMatch(tok, zap, ctx.cwd)) {
-							violationReason = `Bash command references zero-access path: ${zap}`;
-							break;
-						}
-					}
-					if (violationReason) break;
-				}
-			}
-			if (!violationReason) {
-				const writes = bashWriteTargets(command);
-				if (writes.unresolvable) violationReason = "Bash write target is not statically resolvable";
-				for (const t of writes.targets) {
-					if (violationReason) break;
-					if (!underCwd(resolvePath(t, ctx.cwd), ctx.cwd)) violationReason = `Bash write outside cwd: ${t}`;
-				}
-			}
-			if (!violationReason) {
-				const risk = expansionOperandRisk(command);
-				if (risk) violationReason = `Bash ${risk}; restate with explicit paths`;
-			}
-			if (!violationReason) {
-				const hasDeleteOrMove = /\brm\b/.test(command) || /\bmv\b/.test(command);
-				if (hasDeleteOrMove) {
-					for (const ndp of rules.noDeletePaths) {
-						const expanded = expandTilde(ndp);
-						if (commandReferencesPath(command, ndp) || (expanded !== ndp && commandReferencesPath(command, expanded))) {
-							violationReason = `Bash command attempts to delete/move protected path: ${ndp}`;
-							break;
-						}
+			if (typeof command === "string" && command.trim()) {
+				for (const rule of rules.bashToolPatterns) {
+					if (rule.re.test(command)) {
+						violationReason = rule.reason;
+						shouldAsk = !!rule.ask;
+						break;
 					}
 				}
+				if (!violationReason) {
+					const tokens = command.split(/\s+/).map(stripToken).filter(Boolean);
+					for (const tok of tokens) {
+						const resolved = resolvePath(tok, ctx.cwd);
+						for (const zap of rules.zeroAccessPaths) {
+							if (isPathMatch(resolved, zap, ctx.cwd) || isPathMatch(tok, zap, ctx.cwd)) {
+								violationReason = `Bash command references zero-access path: ${zap}`;
+								break;
+							}
+						}
+						if (violationReason) break;
+					}
+				}
+				if (!violationReason) {
+					const writes = bashWriteTargets(command);
+					if (writes.unresolvable) violationReason = "Bash write target is not statically resolvable";
+					for (const t of writes.targets) {
+						if (violationReason) break;
+						if (!underCwd(resolvePath(t, ctx.cwd), ctx.cwd)) violationReason = `Bash write outside cwd: ${t}`;
+					}
+				}
+				if (!violationReason) {
+					const risk = expansionOperandRisk(command);
+					if (risk) violationReason = `Bash ${risk}; restate with explicit paths`;
+				}
+				if (!violationReason) {
+					const hasDeleteOrMove = /\brm\b/.test(command) || /\bmv\b/.test(command);
+					if (hasDeleteOrMove) {
+						for (const ndp of rules.noDeletePaths) {
+							const expanded = expandTilde(ndp);
+							if (commandReferencesPath(command, ndp) || (expanded !== ndp && commandReferencesPath(command, expanded))) {
+								violationReason = `Bash command attempts to delete/move protected path: ${ndp}`;
+								break;
+							}
+						}
+					}
+				}
+			} else {
+				violationReason = "Bash command missing or empty";
 			}
 		}
 
