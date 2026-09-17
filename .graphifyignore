@@ -1,0 +1,8 @@
+# graphify's own output dir. Redundant for the scan — .gitignore already
+# excludes it and detect() prunes the configured output dir itself — but kept
+# as the tool-native record of intent.
+#
+# REAL LIMIT: graphify-out/memory/ is hard-included by detect() and bypasses
+# every ignore mechanism (graphifyy 0.9.63). The only working exclusion is
+# keeping that directory absent — see AGENTS.md.
+graphify-out/
