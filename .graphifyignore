@@ -1,6 +1,8 @@
-# graphify's own output dir. Belt-and-suspenders: detect() already prunes
-# graphify-out/ as the configured output dir and honors .gitignore.
-# LIMITATION: graphify-out/memory/ is still re-ingested — detect() hard-includes
-# it ("query results filed back into the graph") and bypasses ignore rules
-# entirely (graphifyy 0.9.63, detect.py). Removing that noise needs upstream.
+# graphify's own output dir. Redundant for the scan — .gitignore already
+# excludes it and detect() prunes the configured output dir itself — but kept
+# as the tool-native record of intent.
+#
+# REAL LIMIT: graphify-out/memory/ is hard-included by detect() and bypasses
+# every ignore mechanism (graphifyy 0.9.63). The only working exclusion is
+# keeping that directory absent — see AGENTS.md.
 graphify-out/
