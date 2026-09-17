@@ -933,7 +933,7 @@ export default function (pi: ExtensionAPI) {
 
         const selectedModel = await resolveCompactionModel(ctx);
         if (!selectedModel) {
-            ctx.ui.notify("No model available for compaction", "warning");
+            if (ctx.hasUI) ctx.ui.notify("No model available for compaction", "warning");
             return;
         }
 
@@ -941,7 +941,7 @@ export default function (pi: ExtensionAPI) {
         const llmMessages = convertToLlm(allMessages);
         const bashFiles = { "/conversation.json": JSON.stringify(llmMessages, null, 2) };
 
-        ctx.ui.notify(`Compacting ${allMessages.length} messages with ${model.provider}/${model.id}`, "info");
+        if (ctx.hasUI) ctx.ui.notify(`Compacting ${allMessages.length} messages with ${model.provider}/${model.id}`, "info");
 
         const shellToolParams = Type.Object({
             command: Type.String({ description: "The shell command to execute" }),
@@ -1114,10 +1114,11 @@ What remains to be done`;
                     const results = await mapWithConcurrency(toolCalls, TOOL_CALL_CONCURRENCY, async (tc): Promise<ToolCallExecResult> => {
                         const { command } = tc.arguments as { command: string };
 
-                        ctx.ui.notify(
-                            `${tc.name}: ${command.slice(0, TOOL_CALL_PREVIEW_CHARS)}${command.length > TOOL_CALL_PREVIEW_CHARS ? "..." : ""}`,
-                            "info",
-                        );
+                        if (ctx.hasUI)
+                            ctx.ui.notify(
+                                `${tc.name}: ${command.slice(0, TOOL_CALL_PREVIEW_CHARS)}${command.length > TOOL_CALL_PREVIEW_CHARS ? "..." : ""}`,
+                                "info",
+                            );
 
                         let result: string;
                         let isError = false;
@@ -1208,7 +1209,7 @@ What remains to be done`;
                 trajectory,
                 error: message,
             });
-            if (!signal.aborted) {
+            if (!signal.aborted && ctx.hasUI) {
                 ctx.ui.notify(`Compaction failed: ${message}`, "warning");
             }
             return;
