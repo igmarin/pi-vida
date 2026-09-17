@@ -611,7 +611,10 @@ member_launch_line() {
 # pi-vida in each. Layout is deterministic, not probed: member 1 splits from
 # the current pane to the RIGHT, every following member splits the previous
 # member's pane DOWNWARD — a left column of members next to the dispatcher.
-# ponytail: per-pane layout probing only if panes end up unusable.
+# ponytail: deterministic layout, no per-pane size probing. LIMITATION: with
+# many members or a small terminal, the member column panes can end up too
+# small to use. If that happens, query pane sizes and split the largest pane
+# instead of always the previous member's.
 # Env contract for the primary: PI_HERDR_MEMBERS (comma list) so
 # dispatch_agent prompts only these. On any failure: print stderr, exit 2,
 # leave created panes open (the user may want them), never fall back to
