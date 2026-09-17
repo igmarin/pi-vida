@@ -1,6 +1,6 @@
 # pi-vida
 
-`pi-vida` launches a **vida** (a persona profile with skills, a safety gate, and a ticket tracker for one language: `ruby`, `rust`, `python`, `elixir`) inside your repo, on the coding agent host you already use:
+A **vida** is a per-language profile (`ruby`, `rust`, `python`, `elixir`): skills, a safety gate, a ticket tracker. `pi-vida` launches one inside your repo, on the agent host you already use:
 
 ```sh
 cd path/to/your/repo
@@ -60,7 +60,7 @@ Skills resolve to directories under `~/.agents/skills`. `just skills` clones the
 
 Herdr is the host for parallel work: workspaces, panes, `herdr worktree`, and `herdr agent start --kind pi`. Herdr launches `pi-vida` itself; extensions never call `herdr`, and the prompt-only team dispatch below is the one exception. Example: `herdr agent start reviewer --kind pi -- pi-vida ruby`. Inside Herdr, `pi-vida <vida> team` goes pane-native (INV-herdr, amends #19): the launcher splits one pane per team member (`herdr agent start <member> --kind pi -- pi-vida <vida> solo`) and `dispatch_agent` prompts members with `herdr agent prompt --wait`, but only members the launcher started and only while `HERDR_ENV=1`. Outside Herdr team mode stays on hidden children + kill.
 
-The `herdr` skill is on the mantra allowlist of every vida. It no-ops unless `HERDR_ENV=1`, so a plain terminal is unaffected. `pi-vida doctor` warns (never fails) when `herdr` is not on PATH. Prefer `herdr worktree` when already inside Herdr; `stacked-pr-worktree-workflow` stays for gh-stack PR topology.
+The `herdr` skill is on every vida's mantra allowlist; it no-ops unless `HERDR_ENV=1`. `pi-vida doctor` warns (never fails) when `herdr` is not on PATH. Prefer `herdr worktree` when already inside Herdr; `stacked-pr-worktree-workflow` stays for gh-stack PR topology.
 
 ## Configuration
 
@@ -89,9 +89,9 @@ just ext-damage-control # continue-variant safety rules
 
 ### AI code review
 
-This repository uses [rs-guard](https://github.com/nebulaideas/rs-guard) for automated code review, both as a pre-commit hook and as a GitHub Actions workflow on pull requests.
+[rs-guard](https://github.com/nebulaideas/rs-guard) reviews staged files on commit and every non-draft pull request.
 
-[open-code-review](https://github.com/alibaba/open-code-review) (`ocr`) is the default interactive review tool. No global npm install needed; run it on demand:
+[open-code-review](https://github.com/alibaba/open-code-review) (`ocr`) is the default interactive review tool. Run it on demand:
 
 ```sh
 npx -y @alibaba-group/open-code-review

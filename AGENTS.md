@@ -2,7 +2,7 @@
 
 This repo is the **pi-vida** harness. Host is Pi. Run `pi-vida` from the **target repo**.
 
-Pointers (load when the branch fires):
+Pointers (load when the topic comes up):
 
 - `CONTEXT.md` — glossary (vida, profile, mantra, overlay, tracker, chain, team)
 - `docs/how-to.md` — task-oriented usage guide (install, launch, overlay, chains, teams, troubleshooting)
