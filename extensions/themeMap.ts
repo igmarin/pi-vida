@@ -41,7 +41,10 @@ export function applyExtensionDefaults(fileUrl: string, ctx: ExtensionContext): 
 	}
 
 	if (primary) {
-		// ponytail: 150ms beats Pi's startup title; drop if Pi grows a title hook
+		// ponytail: Pi exposes no title hook, so a fixed 150ms timer races Pi's
+		// startup title write — on a slow startup (>150ms) the default title wins
+		// and this one is lost. Remove when Pi ships a title hook or
+		// post-startup event to hang setTitle on.
 		setTimeout(() => ctx.ui.setTitle(`π - ${primary}`), 150);
 	}
 }
