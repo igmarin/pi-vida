@@ -16,7 +16,7 @@ That's all you need to run `pi-vida`. Launch it from your own repos, not from th
 
 > Only if you're contributing to the harness itself: `git config core.hooksPath .githooks` (rs-guard pre-commit) or `scripts/install-hooks.sh`. Using `pi-vida` in your own repos needs no hooks.
 
-Skills: every allowlisted mantra/pack/tracker name resolves to a directory under `PI_SKILLS_HOME` (default `~/.agents/skills`). `just skills` is the supported bootstrap: it reads `packs.yaml` (allowlist name → `owner/repo`), clones each repo into `~/.local/share/pi-vida/repos`, symlinks every `skills/<name>/SKILL.md` into the skills home, and writes `.dotskills-manifest.json` so pack names resolve to their installed skills. Re-run it after pulling the harness or adding a pack; it is idempotent and never overwrites a non-symlink dir. Manual alternative: install packs with dotskills, or drop/symlink any directory containing a `SKILL.md` in there. Missing **required** paths (a mantra, or a tracker the profile configures) exit 2 at launch; a missing pack only warns and launch continues. A malformed `.dotskills-manifest.json` or a manifest entry missing its `SKILL.md` also exits 2.
+Skills: every allowlisted mantra/pack/tracker name resolves to a directory under `PI_SKILLS_HOME` (default `~/.agents/skills`). `just skills` is the supported bootstrap: it reads `packs.yaml` (allowlist name → `owner/repo`), clones each repo into `~/.local/share/pi-vida/repos`, symlinks every `skills/<name>/SKILL.md` into the skills home, and writes `.dotskills-manifest.json` so pack names resolve to their installed skills. Re-run it after pulling the harness or adding a pack; it is idempotent and never overwrites a non-symlink dir. Manual alternative: install packs with dotskills, or drop/symlink any directory containing a `SKILL.md` into the skills home. Missing **required** paths (a mantra, or a tracker the profile configures) exit 2 at launch; a missing pack only warns and launch continues. A malformed `.dotskills-manifest.json` or a manifest entry missing its `SKILL.md` also exits 2.
 
 Requirements: `pi` and `bun` on PATH (fail-closed, checked by `pi-vida doctor`); optional `just`, `rs-guard`, `herdr` (warn only). The `DEEPSEEK_API_KEY` for rs-guard reviews lives in the environment or `~/.config/rs-guard/env`; never in a target repo.
 
@@ -48,7 +48,7 @@ Second launch with a saved overlay: no TUI. The overlay's `models.solo`/`thinkin
 
 ## Daily driver: vidas and modes
 
-A **vida** is a persona profile, one language identity (`ruby`, `rust`, `python`, `elixir`) with its skills, safety gate, and tracker ([CONTEXT.md](../CONTEXT.md)).
+A **vida** is a language identity (`ruby`, `rust`, `python`, `elixir`) with its own skills, safety gate, and tracker (definition: [CONTEXT.md](../CONTEXT.md)).
 
 ```sh
 pi-vida ruby solo     # full toolset + footer status line (default)
@@ -141,7 +141,7 @@ thinking:
 ```
 
 - Capabilities gate the `<capabilities>` system-prompt block; the model never sees a capability that is off.
-- `extra_skills` and `tracker.skill` become `--skill` argv entries so the model can actually use them.
+- `extra_skills` and `tracker.skill` become `--skill` argv entries so the model can use them.
 - `models`/`thinking` roles: `solo` (primary `--model`/`--thinking`) and `planner`/`builder`/`reviewer`/`researcher`. Chain/team/subagent children dispatch with the entry keyed on the **child's agent name**, falling back to the primary's current model when the agent has no entry. Profile-level `models:`/`thinking:` merge under the overlay's as defaults (overlay wins per role), so profile defaults reach children without repeating them in every project.
 - Hand-edit freely; the launcher re-parses and re-validates every launch.
 

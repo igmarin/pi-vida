@@ -19,7 +19,7 @@ Personal Pi Coding Agent harness: pick a vida, load the right extensions and ski
 | **team** | Dispatcher-only mode that hands work to named specialist agents. |
 | **fusion** | Multi-model mode: 2–5 models debate/collaborate in one session. |
 
-The table above is a non-normative quick reference; the entries below are the authoritative definitions (rs-guard treats them as such).
+The table is a quick reference; the definitions below are authoritative (rs-guard treats them as such).
 
 ## Language
 
@@ -46,7 +46,7 @@ YAML under `profiles/<vida>/agents/` or shared `profiles/agents/`, then cwd `.pi
 _Avoid_: flattening pack playbooks into these files
 
 **Project overlay**:
-File in the target repo (`.pi/capabilities.yaml`) that turns capabilities on or off. Default all off; missing file ≡ all off. `bin/pi-vida` parses the overlay (strict, fail closed on bad YAML) and exports the result as `PI_OVERLAY` for `extensions/capabilities.ts`, which appends a `<capabilities>` block to the system prompt at `before_agent_start` when anything is on. When all are off, the prompt is left alone. The model never sees a capability the project has not enabled. The overlay's `extra_skills` and `tracker.skill` are also turned into `--skill` arguments in the launcher so the model can actually use them instead of only seeing them in the prompt. The overlay also carries optional `models:`/`thinking:` role maps (issue #15). See Boot Config.
+File in the target repo (`.pi/capabilities.yaml`) that turns capabilities on or off. Default all off; missing file ≡ all off. `bin/pi-vida` parses the overlay (strict, fail closed on bad YAML) and exports the result as `PI_OVERLAY` for `extensions/capabilities.ts`, which appends a `<capabilities>` block to the system prompt at `before_agent_start` when anything is on. When all are off, the prompt is left alone. The model never sees a capability the project has not enabled. The overlay's `extra_skills` and `tracker.skill` are also passed as `--skill` arguments; naming them in the prompt alone would not make them usable. The overlay also carries optional `models:`/`thinking:` role maps (issue #15). See Boot Config.
 _Avoid_: settings, config (too broad)
 
 **Boot Config**:
@@ -100,7 +100,7 @@ Where tickets are created. `rust`, `ruby`, and `python` use `github-issue`. `eli
 _Avoid_: board, project (GitHub Project is a surface of the tracker)
 
 **Herdr**:
-Terminal multiplexer that hosts parallel work: workspaces, panes, `herdr worktree`, and `herdr agent start <name> --kind pi -- pi-vida <vida>` as the way to start sibling vidas. Herdr is a host (INV-herdr, amends #19 from a total ban to a prompt-only exception): `pi-vida <vida> team` inside Herdr (`HERDR_ENV=1`) has the launcher split one pane per member (`pane split --current/-chain --direction right|down --cwd "$PWD" --no-focus --env PI_VIDA_WORKER=<member>`) and `herdr agent start <member> --kind pi -- pi-vida <vida> solo`; the primary becomes the dispatcher pane and `dispatch_agent` may call `herdr agent prompt <member> --wait` / `herdr agent read <member> --source recent-unwrapped` only against agents the launcher started (`PI_HERDR_MEMBERS`). Extensions must not start/stop the Herdr server, close foreign panes, or shell out to `herdr` when `HERDR_ENV` is unset. Outside Herdr, team keeps the hidden-child + kill path. Members run solo (never nested team), skip the clarify-gate, and any pane/agent failure exits 2 without a fallback. The `herdr` skill is on the mantra allowlist of every vida but no-ops unless `HERDR_ENV=1`, so a plain terminal is unaffected. Doctor warns (never fails) when the `herdr` binary is off PATH.
+Terminal multiplexer that hosts parallel work: workspaces, panes, `herdr worktree`, and `herdr agent start <name> --kind pi -- pi-vida <vida>` as the way to start sibling vidas. Herdr is a host (INV-herdr, amends #19 from a total ban to a prompt-only exception): `pi-vida <vida> team` inside Herdr (`HERDR_ENV=1`) has the launcher split one pane per member (`pane split --current/-chain --direction right|down --cwd "$PWD" --no-focus --env PI_VIDA_WORKER=<member>`) and `herdr agent start <member> --kind pi -- pi-vida <vida> solo`; the primary becomes the dispatcher pane and `dispatch_agent` may call `herdr agent prompt <member> --wait` / `herdr agent read <member> --source recent-unwrapped` only against agents the launcher started (`PI_HERDR_MEMBERS`). Extensions must not start/stop the Herdr server, close foreign panes, or shell out to `herdr` when `HERDR_ENV` is unset. Outside Herdr, team keeps the hidden-child + kill path. Members run solo (never nested team), skip the clarify-gate, and any pane/agent failure exits 2 without a fallback. The `herdr` skill is on the mantra allowlist of every vida but no-ops unless `HERDR_ENV=1`. Doctor warns (never fails) when the `herdr` binary is off PATH.
 _Avoid_: multiplexer-as-host confusion (Herdr hosts Pi vidas; Pi is the agent)
 
 ## Config format
