@@ -414,6 +414,7 @@ overlay_extras() {
       if (overlay.trackerSkill) process.stdout.write("skill\t" + resolve(overlay.trackerSkill) + "\n");
       const soloModel = overlay.models?.solo;
       const soloThinking = overlay.thinking?.solo;
+      if (soloModel) process.stdout.write("model\t" + soloModel + "\n");
       if (soloThinking) process.stdout.write("thinking\t" + soloThinking + "\n");
       if (overlay.capabilities.compaction) process.stdout.write("compaction\ton\n");
     '

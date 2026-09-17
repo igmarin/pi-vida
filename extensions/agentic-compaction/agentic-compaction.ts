@@ -14,6 +14,7 @@ import { Type } from "typebox";
 import { Bash } from "just-bash";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { overlayFromEnv } from "../capabilities.ts";
 import { homedir } from "node:os";
 
 // ============================================================================
@@ -388,8 +389,11 @@ function loadCompactionModelConfig(cwd: string): LoadedCompactionConfig {
     // Issue #115: no persisted choice — consult the overlay solo model
     // first (machine-local prefs stay in settings.json; overlay is the
     // committed per-repo role map). Falls back to hardcoded defaults.
-    const overlaySolo = readOverlaySoloModel();
-    const defaults = overlaySolo ? [overlaySolo, ...getDefaultCompactionModelIds()] : getDefaultCompactionModelIds();
+    // overlayFromEnv is the shared contract (undefined on malformed payload).
+    const overlaySolo = overlayFromEnv()?.models?.solo;
+    const validSolo = typeof overlaySolo === "string" && parseFullModelId(overlaySolo) ? overlaySolo.trim() : undefined;
+    const hardDefaults = getDefaultCompactionModelIds();
+    const defaults = validSolo && !hardDefaults.includes(validSolo) ? [validSolo, ...hardDefaults] : hardDefaults;
     return {
         models: defaults,
         source: "default",
@@ -397,18 +401,6 @@ function loadCompactionModelConfig(cwd: string): LoadedCompactionConfig {
         projectRead,
         paths,
     };
-}
-
-function readOverlaySoloModel(): string | undefined {
-    const raw = process.env.PI_OVERLAY;
-    if (!raw) return undefined;
-    try {
-        const doc = JSON.parse(raw) as { models?: Record<string, string> };
-        const solo = doc?.models?.solo;
-        return typeof solo === "string" && parseFullModelId(solo) ? solo.trim() : undefined;
-    } catch {
-        return undefined;
-    }
 }
 
 function chooseSaveScope(config: LoadedCompactionConfig): ConfigScope {
