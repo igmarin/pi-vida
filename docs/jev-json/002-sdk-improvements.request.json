@@ -1,0 +1,75 @@
+{
+  "state": {
+    "product": "pi-vida: personal per-language agent harness. Direction (owner, 2026-09-22): personal daily driver; skills/packs layer meant to be shared. Jev 001 (same day) confirmed invest zones: modes, host projection cline/kilo, solo launch, herdr integration.",
+    "owner_context": "Owner uses --host projection daily (kilo ~70 percent, cline ~30 percent, claude never) and reports NO pain with the current path: skills are projected into host dirs and the host is exec'd. These candidates are improvements, not pain relief.",
+    "sdk_research_2026_09_22": {
+      "cline_sdk": "@cline/sdk (Node 22+). Surfaces the CLI projection cannot offer: plugins with bundled file-based SKILL.md skills auto-surfaced as slash commands and distributable via npm/git; tool-intercept hooks; configured agents and multi-agent teams; cron/one-off scheduling; ClineCore headless sessions with events and persistence, no TTY.",
+      "kilo_sdk": "@kilocode/sdk v7 exists, server-based v2 API. Kilo is the owner's primary host (~70 percent)."
+    },
+    "candidates": {
+      "cline_plugin_packaging": "Ship each vida as a Cline plugin: skills bundled as SKILL.md inside the package, auto-surfaced as slash commands, distributed via npm/git. Replaces manual skills projection for cline; strengthens the shared skills/packs layer story.",
+      "enforcement_hooks": "Move damage-control from a prompt-level gate to real tool-intercept hooks via the Cline SDK, so blocked actions (git push, .env writes, writes outside cwd) are enforced programmatically in cline sessions.",
+      "native_teams_cline": "Map pi-vida team mode (dispatcher + planner/builder/reviewer/researcher) onto Cline SDK configured agents/teams instead of hidden children or herdr panes, for cline-hosted sessions.",
+      "sdk_scheduling": "Use Cline SDK cron/one-off scheduling for recurring harness tasks (e.g. nightly review sweeps, pack update checks).",
+      "headless_ci_runs": "Use ClineCore headless sessions (events, persistence, no TTY) to run vidas from scripts/CI without an interactive terminal.",
+      "kilo_sdk_path": "Mirror/improve the kilo projection using @kilocode/sdk v2 (server-based) for the owner's primary host."
+    }
+  },
+  "model": "jev-latest",
+  "questions": {
+    "cline_plugin_packaging": {
+      "type": "score",
+      "instructions": "Given the hybrid direction (personal harness, shared skills/packs layer) and no reported pain, how should pi-vida prioritize shipping vidas as Cline plugins with bundled skills in the next 3 months?",
+      "criteria": [
+        "Skip: not worth doing in the next 3 months even as an improvement",
+        "Backlog: real value but not now; record and revisit",
+        "Build now: high value for the hybrid direction; schedule in the next cycle"
+      ]
+    },
+    "enforcement_hooks": {
+      "type": "score",
+      "instructions": "Given damage-control is currently a prompt-level gate in pi sessions, how should pi-vida prioritize moving it to programmatic tool-intercept hooks via the Cline SDK in the next 3 months?",
+      "criteria": [
+        "Skip: not worth doing in the next 3 months even as an improvement",
+        "Backlog: real value but not now; record and revisit",
+        "Build now: high value for the hybrid direction; schedule in the next cycle"
+      ]
+    },
+    "native_teams_cline": {
+      "type": "score",
+      "instructions": "Given team mode already works via hidden children and herdr panes (both used daily), how should pi-vida prioritize a third team implementation on Cline SDK configured agents/teams in the next 3 months?",
+      "criteria": [
+        "Skip: not worth doing in the next 3 months even as an improvement",
+        "Backlog: real value but not now; record and revisit",
+        "Build now: high value for the hybrid direction; schedule in the next cycle"
+      ]
+    },
+    "sdk_scheduling": {
+      "type": "score",
+      "instructions": "Given the owner runs everything interactively today, how should pi-vida prioritize Cline SDK cron/one-off scheduling for recurring harness tasks in the next 3 months?",
+      "criteria": [
+        "Skip: not worth doing in the next 3 months even as an improvement",
+        "Backlog: real value but not now; record and revisit",
+        "Build now: high value for the hybrid direction; schedule in the next cycle"
+      ]
+    },
+    "headless_ci_runs": {
+      "type": "score",
+      "instructions": "Given pi-vida is a personal interactive harness, how should pi-vida prioritize headless ClineCore vida runs for scripts/CI in the next 3 months?",
+      "criteria": [
+        "Skip: not worth doing in the next 3 months even as an improvement",
+        "Backlog: real value but not now; record and revisit",
+        "Build now: high value for the hybrid direction; schedule in the next cycle"
+      ]
+    },
+    "kilo_sdk_path": {
+      "type": "score",
+      "instructions": "Kilo is the owner's primary host (~70 percent) and @kilocode/sdk v7 exists with a server-based v2 API, but the current CLI projection has no reported pain. How should pi-vida prioritize a kilo SDK path in the next 3 months?",
+      "criteria": [
+        "Skip: not worth doing in the next 3 months even as an improvement",
+        "Backlog: real value but not now; record and revisit",
+        "Build now: high value for the hybrid direction; schedule in the next cycle"
+      ]
+    }
+  }
+}

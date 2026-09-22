@@ -1,0 +1,79 @@
+{
+  "state": {
+    "product": "pi-vida: personal per-language agent harness (vidas: rust, elixir, ruby, python). Direction set by owner 2026-09-22: personal daily driver, but the skills/packs layer is meant to be shared with others. Harness install UX for strangers is out of scope for now.",
+    "owner_usage_last_30_days": {
+      "solo_launches": "daily",
+      "modes_chain_team_fusion": "daily",
+      "host_projection": "daily; kilo about 70 percent, cline about 30 percent, claude never",
+      "herdr_pane_native_team": "daily",
+      "capabilities_and_hygiene": "daily: graphify, codegraph, serena overlays, doctor, boot-config wizard"
+    },
+    "evidence_quality": "Owner recall from the primary machine (a different computer); this machine's shell history is void as evidence.",
+    "features": {
+      "solo_launch": "pi-vida <vida> execs pi with the INV-skills argv: damage-control gate extension, --no-skills, then allowlisted --skill paths. The core path everything else builds on.",
+      "modes_chain_team_fusion": "chain runs plan-build-review as child sessions; team is dispatcher-only with dispatch_agent to named specialists; fusion is a vendored multi-model stack of 2-5 models in one session.",
+      "host_projection_cline_kilo": "--host cline|kilo: Rust launcher installs and projects vida skills into host dirs (~/.agents/skills, ~/.kilo/skills), then execs the host or prints a start hint.",
+      "host_projection_claude": "--host claude: same projection into ~/.claude/skills. Owner reports never using claude.",
+      "herdr_integration": "INV-herdr: inside HERDR_ENV, team mode splits one terminal pane per member via herdr agent start; dispatch via herdr agent prompt/read, only for launcher-started members.",
+      "terminal_ux": "Interactive gum host/vida/mode menu on no-arg TTY launch, plus the solo-only status-line extension. Owner launches via hosts, so terminal-only UX is rarely exercised."
+    },
+    "maintenance_context": "Every shipped feature carries ongoing cost: rs-guard enforced invariants (INV-skills, INV-herdr), just smoke coverage, and docs surface in CONTEXT.md, README.md, docs/how-to.md."
+  },
+  "model": "jev-latest",
+  "questions": {
+    "solo_launch": {
+      "type": "score",
+      "instructions": "Given the owner's actual usage and the hybrid direction (personal harness, shared skills/packs layer), how should pi-vida treat the solo launch path over the next 3 months?",
+      "criteria": [
+        "Park or cut: not earning its maintenance cost; freeze or remove",
+        "Keep as-is: used and working; no new investment",
+        "Invest and harden: central to daily work or to the shared skills/packs surface; prioritize improvements"
+      ]
+    },
+    "modes_chain_team_fusion": {
+      "type": "score",
+      "instructions": "Given that the owner runs chain, team, and fusion modes daily, how should pi-vida treat these orchestration modes over the next 3 months?",
+      "criteria": [
+        "Park or cut: not earning its maintenance cost; freeze or remove",
+        "Keep as-is: used and working; no new investment",
+        "Invest and harden: central to daily work or to the shared skills/packs surface; prioritize improvements"
+      ]
+    },
+    "host_projection_cline_kilo": {
+      "type": "score",
+      "instructions": "Given that host projection to kilo (about 70 percent) and cline (about 30 percent) is the owner's main entry into sessions, how should pi-vida treat the cline/kilo --host path over the next 3 months?",
+      "criteria": [
+        "Park or cut: not earning its maintenance cost; freeze or remove",
+        "Keep as-is: used and working; no new investment",
+        "Invest and harden: central to daily work or to the shared skills/packs surface; prioritize improvements"
+      ]
+    },
+    "host_projection_claude": {
+      "type": "score",
+      "instructions": "The claude --host projection is shipped and maintained but the owner never uses it. How should pi-vida treat the claude projection over the next 3 months, given the shared skills/packs layer is meant for others who might use claude?",
+      "criteria": [
+        "Park or cut: not earning its maintenance cost; freeze or remove",
+        "Keep as-is: cheap to keep, potentially useful to others via the shared layer",
+        "Invest and harden: prioritize improvements here"
+      ]
+    },
+    "herdr_integration": {
+      "type": "score",
+      "instructions": "Given the owner uses herdr pane-native team daily, how should pi-vida treat the herdr integration (INV-herdr pane splitting, prompt/read dispatch) over the next 3 months?",
+      "criteria": [
+        "Park or cut: not earning its maintenance cost; freeze or remove",
+        "Keep as-is: used and working; no new investment",
+        "Invest and harden: central to daily work or to the shared skills/packs surface; prioritize improvements"
+      ]
+    },
+    "terminal_ux": {
+      "type": "score",
+      "instructions": "Terminal-only UX (the interactive gum menu and the solo status-line extension) is shipped and maintained, but the owner launches via hosts (Cline worktrees, herdr panes) so it is rarely exercised. How should pi-vida treat terminal-only UX over the next 3 months?",
+      "criteria": [
+        "Park or cut: not earning its maintenance cost; freeze or remove",
+        "Keep as-is: used and working; no new investment",
+        "Invest and harden: prioritize improvements here"
+      ]
+    }
+  }
+}

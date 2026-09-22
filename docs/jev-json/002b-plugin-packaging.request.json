@@ -1,0 +1,20 @@
+{
+  "state": {
+    "product": "pi-vida: personal per-language agent harness. Direction: personal daily driver; skills/packs layer meant to be shared. Jev 001 confirmed host projection cline/kilo as an invest zone; owner uses it daily (kilo ~70 percent, cline ~30 percent) with no reported pain.",
+    "new_state_fact_2026_09_22": "Sharing is IMMINENT: the owner has a specific person/team in mind as the first outside consumer of the skills/packs layer. The recipient's host (cline vs kilo vs other) is not yet recorded.",
+    "candidate": "Ship each vida as a Cline plugin: skills bundled as SKILL.md inside an npm/git-distributable package, auto-surfaced as slash commands in the host. Replaces manual skills projection for cline. If the recipient uses kilo, the analogous move is packaging via @kilocode/sdk; the sharing logic is the same, the packaging target differs.",
+    "prior_judgment": "Jev 002 scored this 1.51 with confidence 0.27 (backlog .47 vs build .52) — a coin flip caused by the missing sharing-timeline fact, now supplied."
+  },
+  "model": "jev-latest",
+  "questions": {
+    "plugin_packaging_for_sharing": {
+      "type": "score",
+      "instructions": "Given the first outside consumer of the skills/packs layer is imminent (specific person/team, host not yet recorded), how should pi-vida prioritize plugin-style packaging of vidas (SKILL.md bundles distributable via npm/git, auto slash commands) in the next 3 months?",
+      "criteria": [
+        "Skip: not worth doing in the next 3 months even with sharing imminent",
+        "Backlog: real value but not now; record and revisit",
+        "Build now: high value with sharing imminent; schedule in the next cycle"
+      ]
+    }
+  }
+}
