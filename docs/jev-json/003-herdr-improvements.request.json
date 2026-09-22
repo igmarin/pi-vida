@@ -1,0 +1,62 @@
+{
+  "state": {
+    "product": "pi-vida: personal per-language agent harness. Direction: personal daily driver; skills/packs layer shared (first outside consumer imminent). Jev 001 confirmed herdr integration as an invest zone (1.91).",
+    "owner_context": "Owner uses herdr pane-native team mode daily and reports NO pain — the goal is improving the support, not fixing something broken.",
+    "current_inv_herdr_surface": "libexec/pi-vida-launch start_herdr_team: inside HERDR_ENV team mode splits one herdr pane per member and starts pi-vida <vida> solo with PI_VIDA_WORKER (reduced member base: damage-control + capabilities + team-member, --no-skills, no boot-config/clarify-gate/status-line). dispatch_agent prompts via herdr agent prompt <member> --wait and reads via herdr agent read --source recent-unwrapped, ONLY for launcher-started members (PI_HERDR_MEMBERS). Dispatch waits on a 15-minute wall clock (PI_CHILD_TIMEOUT_MS); a dead member pane hangs until that timeout. doctor only warns if the herdr binary is missing. The herdr skill no-ops when HERDR_ENV is unset.",
+    "candidates": {
+      "member_recovery": "Detect a dead/unresponsive member pane and respawn it (new herdr pane + agent start) instead of hanging until the 15-minute wall clock; fail fast with a clear error when respawn is impossible.",
+      "team_status_observability": "A status view (pi-vida team status or doctor subcheck) listing PI_HERDR_MEMBERS panes: alive/dead, current task, last activity — via herdr agent read.",
+      "doctor_herdr_depth": "Deepen doctor for herdr: verify server reachability and version compatibility, and flag HERDR_ENV set but herdr missing/mismatch — beyond today's binary-presence warning.",
+      "per_member_model_override": "Confirm and extend merged per-role model/thinking overrides (profile defaults under overlay, keyed on agent name) into herdr member panes started by the launcher, so planner/builder/reviewer panes get their role models.",
+      "dispatch_ergonomics": "Better dispatch ergonomics: per-call timeouts, partial reads while a member works, and cancel propagation to member panes, instead of one blocking --wait per dispatch."
+    }
+  },
+  "model": "jev-latest",
+  "questions": {
+    "member_recovery": {
+      "type": "score",
+      "instructions": "Given daily herdr team usage with no reported pain, how should pi-vida prioritize member-pane recovery (detect dead member, respawn, fail fast) in the next 3 months?",
+      "criteria": [
+        "Skip: not worth doing in the next 3 months even as an improvement",
+        "Backlog: real value but not now; record and revisit",
+        "Build now: high value; schedule in the next cycle"
+      ]
+    },
+    "team_status_observability": {
+      "type": "score",
+      "instructions": "Given daily herdr team usage with no reported pain, how should pi-vida prioritize a member-pane status view (alive/dead, current task, last activity) in the next 3 months?",
+      "criteria": [
+        "Skip: not worth doing in the next 3 months even as an improvement",
+        "Backlog: real value but not now; record and revisit",
+        "Build now: high value; schedule in the next cycle"
+      ]
+    },
+    "doctor_herdr_depth": {
+      "type": "score",
+      "instructions": "Given doctor currently only warns on a missing herdr binary, how should pi-vida prioritize deeper herdr checks (server reachability, version compat, HERDR_ENV consistency) in the next 3 months?",
+      "criteria": [
+        "Skip: not worth doing in the next 3 months even as an improvement",
+        "Backlog: real value but not now; record and revisit",
+        "Build now: high value; schedule in the next cycle"
+      ]
+    },
+    "per_member_model_override": {
+      "type": "score",
+      "instructions": "Given chain/team/subagent children already get merged per-role model/thinking, how should pi-vida prioritize confirming/extending those overrides into herdr member panes in the next 3 months?",
+      "criteria": [
+        "Skip: not worth doing in the next 3 months even as an improvement",
+        "Backlog: real value but not now; record and revisit",
+        "Build now: high value; schedule in the next cycle"
+      ]
+    },
+    "dispatch_ergonomics": {
+      "type": "score",
+      "instructions": "Given dispatch is one blocking --wait per call today, how should pi-vida prioritize dispatch ergonomics (per-call timeouts, partial reads, cancel propagation) in the next 3 months?",
+      "criteria": [
+        "Skip: not worth doing in the next 3 months even as an improvement",
+        "Backlog: real value but not now; record and revisit",
+        "Build now: high value; schedule in the next cycle"
+      ]
+    }
+  }
+}

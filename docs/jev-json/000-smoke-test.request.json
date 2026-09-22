@@ -1,0 +1,1 @@
+{"state":"Smoke test from pi-vida workspace. No user data.","model":"jev-latest","questions":{"connectivity_ok":{"type":"noul","instructions":"Is this request correctly formed and reaching the Jev API?","criteria":{"true":"The request is well-formed and the model can answer","false":"The request is malformed"}}}}
